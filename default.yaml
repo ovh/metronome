@@ -1,0 +1,12 @@
+pg:
+  user: metronome
+  password: metropass
+  db: metronome
+
+token:
+  key: 0323354b2b0fefbda5efbdbce3839f0665777befbda6e4bd8fefbdb328e8b7bc54efbe8928efbda90fe294abefbe92502eefbdbfefbe93e787bee8bebb0647efbfbde6849fefbe8377623d223d2e2172052e4f08efbe80efbe8de5a58e67efbe901aefbda3
+  ttl: 259200 # 3days
+
+kafka:
+  brokers:
+    - localhost:9092

@@ -1,0 +1,13 @@
+{
+  "properties": {
+    "username": {
+      "$ref": "#/definitions/username"
+    },
+    "password": {
+      "$ref": "#/definitions/password"
+    }
+  },
+  "required": ["username", "password"],
+  "type": "object",
+  "additionalProperties": false
+}

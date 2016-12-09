@@ -1,0 +1,9 @@
+{
+  "properties": {
+    "password": {
+      "$ref": "#/definitions/password"
+    }
+  },
+  "type": "object",
+  "additionalProperties": false
+}

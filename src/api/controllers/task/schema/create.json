@@ -1,0 +1,19 @@
+{
+  "properties": {
+    "id": {
+      "$ref": "#/definitions/id"
+    },
+    "name": {
+      "$ref": "#/definitions/name"
+    },
+    "schedule": {
+      "$ref": "#/definitions/schedule"
+    },
+    "urn": {
+      "$ref": "#/definitions/urn"
+    }
+  },
+  "required": ["name", "schedule", "urn"],
+  "type": "object",
+  "additionalProperties": false
+}

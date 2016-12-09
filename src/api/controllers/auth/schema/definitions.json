@@ -1,0 +1,9 @@
+{
+  "username": {
+    "type": "string",
+    "minLength": 1
+  },
+  "password": {
+    "minLength": 1
+  }
+}
