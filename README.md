@@ -26,5 +26,5 @@ Instructions on how to contribute to Metronome are available on the [Contributin
 - Twitter: [@notd33d33](https://twitter.com/notd33d33)
 
 [UI]: https://github.com/runabove/metronome-ui
-[Contributing]: https://github.com/runabove/metronome/blob/master/README.md
+[Contributing]: CONTRIBUTING.md
 [ISO8601]: http://en.wikipedia.org/wiki/ISO_8601 "ISO8601 Standard"
