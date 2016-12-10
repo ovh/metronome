@@ -1,4 +1,4 @@
- 
+
 <h1><img src="https://rawgithub.com/runabove/metronome/master/icon.svg" width="48" height="48">&nbsp;Metronome - Distributed, fault tolerant scheduler</h1>
 
 Metronome is a distributed and fault-tolerant event scheduler. It can be used to trigger remote systems throught events (HTTP, AMQP, KAFKA).
@@ -16,6 +16,21 @@ Metronome has a number of advantages over regular cron:
 ## Status
 
 Currently Metronome is under heavy development.
+
+## Quick start
+
+ - Clone the repository
+ - Install glide, follow instructions here https://glide.sh/
+ - Download dependencies:
+
+    `glide install`
+
+ - Build the agents
+
+    `make`
+
+ - Start Kafka and PostgreSQL
+ - Launch the agents under `build` foder
 
 ## Contributing
 
