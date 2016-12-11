@@ -12,18 +12,18 @@ import (
 
 // Job consists of a plan execution.
 type Job struct {
-	GUID    string
+	Guid    string
 	At      int64
 	Epsilon int64
-	URN     string
+	Urn     string
 }
 
 // Serialize a Job to Kafka
 func (j *Job) ToKafka() *sarama.ProducerMessage {
 	return &sarama.ProducerMessage{
 		Topic: constants.KAFKA_TOPIC_JOBS,
-		Key:   sarama.StringEncoder(j.GUID),
-		Value: sarama.StringEncoder(fmt.Sprintf("%v %v %v %v", j.GUID, j.At, j.Epsilon, j.URN)),
+		Key:   sarama.StringEncoder(j.Guid),
+		Value: sarama.StringEncoder(fmt.Sprintf("%v %v %v %v", j.Guid, j.At, j.Epsilon, j.Urn)),
 	}
 }
 
@@ -45,10 +45,10 @@ func (j *Job) FromKafka(msg *sarama.ConsumerMessage) error {
 		return fmt.Errorf("unprocessable job(%v) - bad epsilon", key)
 	}
 
-	j.GUID = key
+	j.Guid = key
 	j.At = timestamp
 	j.Epsilon = epsilon
-	j.URN = segs[3]
+	j.Urn = segs[3]
 
 	return nil
 }

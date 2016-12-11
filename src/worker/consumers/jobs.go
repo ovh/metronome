@@ -64,15 +64,15 @@ func (jc *jobConsumer) handleMsg(msg *sarama.ConsumerMessage) {
 	v := url.Values{}
 	v.Set("time", strconv.FormatInt(j.At, 10))
 	v.Set("epsilon", strconv.FormatInt(j.Epsilon, 10))
-	v.Set("urn", j.URN)
+	v.Set("urn", j.Urn)
 	v.Set("at", strconv.FormatInt(time.Now().Unix(), 10))
 
 	log.WithFields(log.Fields{
 		"time":    j.At,
 		"epsilon": j.Epsilon,
-		"urn":     j.URN,
+		"urn":     j.Urn,
 		"at":      time.Now().Unix(),
 	}).Debug("POST")
 
-	http.PostForm(j.URN, v)
+	http.PostForm(j.Urn, v)
 }

@@ -51,7 +51,7 @@ func NewEntry(task models.Task) (*Entry, error) {
 
 // Check if entry is semanticaly the same as a task
 func (e *Entry) SameAs(t models.Task) bool {
-	return e.task.URN == t.URN &&
+	return e.task.Urn == t.Urn &&
 		e.task.Schedule == t.Schedule
 }
 
@@ -61,8 +61,8 @@ func (e *Entry) Epsilon() int64 {
 }
 
 // Return the task urn
-func (e *Entry) URN() string {
-	return e.task.URN
+func (e *Entry) Urn() string {
+	return e.task.Urn
 }
 
 // Return the next execution time
