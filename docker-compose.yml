@@ -1,0 +1,62 @@
+version: '2'
+services:
+  # databases
+  postgres:
+    image: postgres:9.6.1
+    expose:
+      - "5432"
+    environment:
+      POSTGRES_USER: metronome
+      POSTGRES_PASSWORD: metropass
+      POSTGRES_DB: metronome
+  redis:
+    image: redis:3.2.6
+
+  # kafka
+  zookeeper:
+    image: wurstmeister/zookeeper
+    expose:
+      - "2181"
+  kafka:
+    links:
+      - zookeeper
+    build: git://github.com/d33d33/kafka-docker
+    expose:
+      - "9092"
+    environment:
+      KAFKA_ADVERTISED_HOST_NAME: "kafka"
+      KAFKA_ADVERTISED_PORT: "9092"
+      KAFKA_CREATE_TOPICS: "tasks:1:1:compact,jobs:1:1,states:1:1"
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'false'
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+
+  ui:
+    build: git://github.com/runabove/metronome-ui
+    ports:
+      - "8081:8080"
+  api:
+    links:
+      - postgres
+      - kafka
+      - redis
+    build: .
+    ports:
+      - "8080:8080"
+    command: metronome-api --pg.addr=postgres:5432 --kafka.brokers=kafka:9092 --redis.addr=redis:6379
+  scheduler:
+    links:
+      - kafka
+    build: .
+    command: metronome-scheduler --kafka.brokers=kafka:9092
+  aggregator:
+    links:
+      - postgres
+      - kafka
+      - redis
+    build: .
+    command: metronome-aggregator --pg.addr=postgres:5432 --kafka.brokers=kafka:9092 --redis.addr=redis:6379
+  worker:
+    links:
+      - kafka
+    build: .
+    command: metronome-worker --kafka.brokers=kafka:9092
