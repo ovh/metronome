@@ -107,9 +107,6 @@ func (tc *TaskConsumer) Tasks() <-chan models.Task {
 
 // WaitForDrain wait for consumer to EOF partitions
 func (tc *TaskConsumer) WaitForDrain() {
-	if tc.drained {
-		return
-	}
 	tc.drainWg.Wait()
 }
 
