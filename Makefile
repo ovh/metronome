@@ -20,6 +20,10 @@ agents: assets $(AGENTS)
 $(AGENTS): $$(call rwildcard, src/$$@, *.go) $$(call rwildcard, src/metronome, *.go)
 	$(CC) $(CFLAGS) -o $(BUILD_DIR)/$@ $(SRC_DIR)/$@
 
+.PHONY: install
+install: agents
+	@for a in $(AGENTS); do cp "$(BUILD_DIR)/$$a" "$$GOPATH/bin/metronome-$$a"; done
+
 .PHONY: lint
 lint:
 	@command -v gometalinter >/dev/null 2>&1 || { echo >&2 "gometalinter is required but not available please follow instructions from https://github.com/alecthomas/gometalinter"; exit 1; }
