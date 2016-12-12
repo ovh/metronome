@@ -11,23 +11,25 @@ import (
 	"github.com/runabove/metronome/src/metronome/pg"
 )
 
-type taskConsumer struct {
+// TaskConsumer consumed tasks messages from a Kafka topic to maintain the tasks database.
+type TaskConsumer struct {
 	consumer *saramaC.Consumer
 }
 
-func NewTaskConsumer() (*taskConsumer, error) {
+// NewTaskConsumer returns a new task consumer.
+func NewTaskConsumer() (*TaskConsumer, error) {
 	brokers := viper.GetStringSlice("kafka.brokers")
 
 	config := saramaC.NewConfig()
 	config.ClientID = "metronome-scheduler"
 	config.Consumer.Offsets.Initial = sarama.OffsetOldest
 
-	consumer, err := saramaC.NewConsumer(brokers, "aggregator", []string{constants.KAFKA_TOPIC_TASKS}, config)
+	consumer, err := saramaC.NewConsumer(brokers, "aggregator", []string{constants.KafkaTopicTasks}, config)
 	if err != nil {
 		return nil, err
 	}
 
-	tc := &taskConsumer{
+	tc := &TaskConsumer{
 		consumer: consumer,
 	}
 
@@ -46,11 +48,14 @@ func NewTaskConsumer() (*taskConsumer, error) {
 	return tc, nil
 }
 
-func (tc *taskConsumer) Close() error {
+// Close the consumer.
+func (tc *TaskConsumer) Close() error {
 	return tc.consumer.Close()
 }
 
-func (tc *taskConsumer) handleMsg(msg *sarama.ConsumerMessage) {
+// Handle message from Kafka.
+// Apply updates to the database.
+func (tc *TaskConsumer) handleMsg(msg *sarama.ConsumerMessage) {
 	var t models.Task
 	if err := t.FromKafka(msg); err != nil {
 		log.Error(err)
@@ -64,7 +69,7 @@ func (tc *taskConsumer) handleMsg(msg *sarama.ConsumerMessage) {
 
 		_, err := db.Model(&t).Delete()
 		if err != nil {
-			log.Errorf("%v %v", err) // TODO log for replay or not commit
+			log.Errorf("%v", err) // TODO log for replay or not commit
 		}
 		return
 	}

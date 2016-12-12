@@ -14,19 +14,19 @@ import (
 )
 
 var cfgFile string
-var Verbose bool
+var verbose bool
 
 func init() {
 	cobra.OnInitialize(initConfig)
 	RootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file to use")
-	RootCmd.PersistentFlags().BoolVarP(&Verbose, "verbose", "v", false, "verbose output")
-	RootCmd.Flags().StringP("api.http.listen", "l", "0.0.0.0:8080", "api listen addresse (default is 0.0.0.0:8080)")
+	RootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "verbose output")
+	RootCmd.Flags().StringP("api.http.listen", "l", "0.0.0.0:8080", "api listen addresse")
 
 	viper.BindPFlags(RootCmd.Flags())
 }
 
 func initConfig() {
-	if Verbose {
+	if verbose {
 		log.SetLevel(log.DebugLevel)
 	}
 
@@ -78,6 +78,7 @@ func initConfig() {
 	}
 }
 
+// RootCmd launch the api agent.
 var RootCmd = &cobra.Command{
 	Use:   "metronome-api",
 	Short: "Metronome api provide a rest api to manage metronome tasks",

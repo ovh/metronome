@@ -1,6 +1,8 @@
 
 <h1><img src="https://rawgithub.com/runabove/metronome/master/icon.svg" width="48" height="48">&nbsp;Metronome - Distributed, fault tolerant scheduler</h1>
+[![GoDoc](https://godoc.org/github.com/runabove/metronome?status.svg)](https://godoc.org/github.com/runabove/metronome)
 [![Build Status](https://travis-ci.org/runabove/metronome.svg?branch=ci)](https://travis-ci.org/runabove/metronome)
+[![Go Report Card](https://goreportcard.com/badge/github.com/runabove/metronome)](https://goreportcard.com/report/github.com/runabove/metronome)
 
 Metronome is a distributed and fault-tolerant event scheduler. It can be used to trigger remote systems throught events (HTTP, AMQP, KAFKA).
 

@@ -8,7 +8,12 @@ go_import_path: github.com/runabove/metronome
 
 before_install:
   - go get github.com/Masterminds/glide
+  - go get github.com/alecthomas/gometalinter
+
+before_script:
+  gometalinter --install --update
 
 script:
   - glide install
+  - make lint
   - make

@@ -8,7 +8,7 @@ import (
 
 var durationRegex = regexp.MustCompile(`P(?P<years>\d+Y)?(?P<months>\d+M)?(?P<days>\d+D)?T?(?P<hours>\d+H)?(?P<minutes>\d+M)?(?P<seconds>\d+S)?`)
 
-// Parse an iso string to a time.Duration
+// ParseDuration return a time.Duration from an iso string.
 func ParseDuration(str string) time.Duration {
 	matches := durationRegex.FindStringSubmatch(str)
 
@@ -25,7 +25,8 @@ func ParseDuration(str string) time.Duration {
 	return time.Duration(years*24*365*hour + months*30*24*hour + days*24*hour + hours*hour + minutes*minute + seconds*second)
 }
 
-// Parse a string to int64 - hamdle error as 0
+// ParseInt64 return an int64 from a string.
+// Errors are handle as 0.
 func ParseInt64(value string) int64 {
 	if len(value) == 0 {
 		return 0

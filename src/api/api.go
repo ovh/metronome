@@ -1,3 +1,15 @@
+// Api agent expose a simple HTTP interface to manage tasks.
+//
+// The api is stateless making horizontal scaling a breeze.
+//
+// Usage
+//
+// 		api  [flags]
+// Flags:
+//   -l, --api.http.listen string   api listen addresse
+//       --config string            config file to use
+//       --help                     display help
+//   -v, --verbose                  verbose output
 package main
 
 import (

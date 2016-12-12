@@ -13,7 +13,7 @@ import (
 	"github.com/runabove/metronome/src/metronome/models"
 )
 
-// schedule regex: https://regex101.com/r/vyBrRd/3
+// Create endoint handle task creation.
 func Create(w http.ResponseWriter, r *http.Request) {
 	token := authSrv.GetToken(r.Header.Get("Authorization"))
 	if token == nil {
@@ -29,13 +29,14 @@ func Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// schedule regex: https://regex101.com/r/vyBrRd/3
 	result := core.ValidateJSON("task", "create", string(body))
 	if !result.Valid {
 		out.JSON(w, 422, result.Errors)
 		return
 	}
 
-	task.UserId = authSrv.UserId(token)
+	task.UserID = authSrv.UserID(token)
 
 	success := taskSrv.Create(&task)
 	if !success {
@@ -45,6 +46,7 @@ func Create(w http.ResponseWriter, r *http.Request) {
 	out.JSON(w, 200, task)
 }
 
+// Delete endoint handle task deletion.
 func Delete(w http.ResponseWriter, r *http.Request) {
 	token := authSrv.GetToken(r.Header.Get("Authorization"))
 	if token == nil {
@@ -52,7 +54,7 @@ func Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	success := taskSrv.Delete(mux.Vars(r)["id"], authSrv.UserId(token))
+	success := taskSrv.Delete(mux.Vars(r)["id"], authSrv.UserID(token))
 	if !success {
 		out.BadGateway(w)
 		return

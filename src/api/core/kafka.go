@@ -9,14 +9,17 @@ import (
 	"github.com/d33d33/viper" // FIXME https://github.com/spf13/viper/pull/285
 )
 
-type kafka struct {
+// Kafka handle Kafka connection.
+// The producer use a WaitForAll strategy to perform message ack.
+type Kafka struct {
 	Producer sarama.SyncProducer
 }
 
-var k *kafka
+var k *Kafka
 var once sync.Once
 
-func Kafka() *kafka {
+// GetKafka return the kafka instance.
+func GetKafka() *Kafka {
 	brokers := viper.GetStringSlice("kafka.brokers")
 
 	once.Do(func() {
@@ -35,7 +38,7 @@ func Kafka() *kafka {
 			panic(err)
 		}
 
-		k = &kafka{
+		k = &Kafka{
 			Producer: producer,
 		}
 	})
@@ -43,7 +46,8 @@ func Kafka() *kafka {
 	return k
 }
 
-func (k *kafka) Close() error {
+// Close the producer.
+func (k *Kafka) Close() error {
 	if err := k.Producer.Close(); err != nil {
 		log.Error("Failed to shut down producer cleanly", err)
 	}

@@ -1,3 +1,4 @@
+// Package routers defined the api endpoints
 package routers
 
 import (
@@ -7,6 +8,7 @@ import (
 	"github.com/gorilla/mux"
 )
 
+// Route defined an http endpoint.
 type Route struct {
 	Name        string
 	Method      string
@@ -14,8 +16,10 @@ type Route struct {
 	HandlerFunc http.HandlerFunc
 }
 
+// Routes defined multiple http endoints.
 type Routes []Route
 
+// InitRoutes bind the http endpoints.
 func InitRoutes() *mux.Router {
 	router := mux.NewRouter()
 	bind(router, "/task", TaskRoutes)

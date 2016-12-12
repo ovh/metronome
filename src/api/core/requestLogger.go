@@ -4,11 +4,14 @@ import (
 	log "github.com/Sirupsen/logrus"
 )
 
+// RequestLogger wrap logrus to a compliant negroni logger.
+// Log level can be defined through Level.
 type RequestLogger struct {
 	LogType string
 	Level   log.Level
 }
 
+// Println to logrus.
 func (rl RequestLogger) Println(v ...interface{}) {
 	lg := log.WithField("type", rl.LogType)
 	l := lg.Infoln
@@ -31,6 +34,7 @@ func (rl RequestLogger) Println(v ...interface{}) {
 	l(v...)
 }
 
+// Printf to logrus.
 func (rl RequestLogger) Printf(format string, v ...interface{}) {
 	lg := log.WithField("type", rl.LogType)
 	l := lg.Infof

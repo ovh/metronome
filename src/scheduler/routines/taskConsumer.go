@@ -13,17 +13,17 @@ import (
 	"github.com/runabove/metronome/src/metronome/models"
 )
 
-// taskConsumer handle the internal states of the consumer
-type taskConsumer struct {
+// TaskConsumer handle the internal states of the consumer
+type TaskConsumer struct {
 	client   *saramaC.Client
 	consumer *saramaC.Consumer
 	drained  bool
-	drainMux sync.Mutex
+	drainWg  sync.WaitGroup
 	tasks    chan models.Task
 }
 
-// Return a new task consumer
-func NewTaskComsumer() (*taskConsumer, error) {
+// NewTaskComsumer return a new task consumer
+func NewTaskComsumer() (*TaskConsumer, error) {
 	brokers := viper.GetStringSlice("kafka.brokers")
 
 	config := saramaC.NewConfig()
@@ -35,12 +35,12 @@ func NewTaskComsumer() (*taskConsumer, error) {
 		return nil, err
 	}
 
-	consumer, err := saramaC.NewConsumerFromClient(client, "schedulers", []string{constants.KAFKA_TOPIC_TASKS})
+	consumer, err := saramaC.NewConsumerFromClient(client, "schedulers", []string{constants.KafkaTopicTasks})
 	if err != nil {
 		return nil, err
 	}
 
-	tc := &taskConsumer{
+	tc := &TaskConsumer{
 		client:   client,
 		consumer: consumer,
 		tasks:    make(chan models.Task),
@@ -50,7 +50,7 @@ func NewTaskComsumer() (*taskConsumer, error) {
 	offsets := make(map[int32]int64)
 	messages := 0
 
-	tc.drainMux.Lock()
+	tc.drainWg.Add(1)
 
 	// Progress display
 	ticker := time.NewTicker(500 * time.Millisecond)
@@ -72,7 +72,7 @@ func NewTaskComsumer() (*taskConsumer, error) {
 			if !tc.drained {
 				tc.drained = true
 				ticker.Stop()
-				tc.drainMux.Unlock()
+				tc.drainWg.Done()
 			}
 		}
 	}()
@@ -91,7 +91,7 @@ func NewTaskComsumer() (*taskConsumer, error) {
 				if !tc.drained && tc.isDrained(hwm, offsets) {
 					tc.drained = true
 					ticker.Stop()
-					tc.drainMux.Unlock()
+					tc.drainWg.Done()
 				}
 			}
 		}
@@ -100,22 +100,21 @@ func NewTaskComsumer() (*taskConsumer, error) {
 	return tc, nil
 }
 
-// Incomming task channel
-func (tc *taskConsumer) Tasks() <-chan models.Task {
+// Tasks return the incomming task channel
+func (tc *TaskConsumer) Tasks() <-chan models.Task {
 	return tc.tasks
 }
 
-// Wait for consumer to EOF partitions
-func (tc *taskConsumer) WaitForDrain() {
+// WaitForDrain wait for consumer to EOF partitions
+func (tc *TaskConsumer) WaitForDrain() {
 	if tc.drained {
 		return
 	}
-	tc.drainMux.Lock()
-	tc.drainMux.Unlock()
+	tc.drainWg.Wait()
 }
 
 // Close the task consumer
-func (tc *taskConsumer) Close() (err error) {
+func (tc *TaskConsumer) Close() (err error) {
 	if e := tc.consumer.Close(); e != nil {
 		err = e
 	}
@@ -126,7 +125,7 @@ func (tc *taskConsumer) Close() (err error) {
 }
 
 // Handle incomming messages
-func (tc *taskConsumer) handleMsg(msg *sarama.ConsumerMessage) {
+func (tc *TaskConsumer) handleMsg(msg *sarama.ConsumerMessage) {
 	var t models.Task
 	if err := t.FromKafka(msg); err != nil {
 		log.Error(err)
@@ -137,16 +136,16 @@ func (tc *taskConsumer) handleMsg(msg *sarama.ConsumerMessage) {
 }
 
 // Retrive highWaterMarks for each partition
-func (tc *taskConsumer) highWaterMarks() map[int32]int64 {
+func (tc *TaskConsumer) highWaterMarks() map[int32]int64 {
 	res := make(map[int32]int64)
 
-	parts, err := tc.client.Partitions(constants.KAFKA_TOPIC_TASKS)
+	parts, err := tc.client.Partitions(constants.KafkaTopicTasks)
 	if err != nil {
 		log.Panic(err)
 	}
 
 	for p := range parts {
-		i, err := tc.client.GetOffset(constants.KAFKA_TOPIC_TASKS, int32(p), sarama.OffsetNewest)
+		i, err := tc.client.GetOffset(constants.KafkaTopicTasks, int32(p), sarama.OffsetNewest)
 		if err != nil {
 			log.Panic(err)
 		}
@@ -158,8 +157,8 @@ func (tc *taskConsumer) highWaterMarks() map[int32]int64 {
 }
 
 // Check if consumer reach EOF on all the partitions
-func (tc *taskConsumer) isDrained(hwm, offsets map[int32]int64) bool {
-	subs := tc.consumer.Subscriptions()[constants.KAFKA_TOPIC_TASKS]
+func (tc *TaskConsumer) isDrained(hwm, offsets map[int32]int64) bool {
+	subs := tc.consumer.Subscriptions()[constants.KafkaTopicTasks]
 
 	for partition := range subs {
 		part := int32(partition)

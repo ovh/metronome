@@ -15,23 +15,24 @@ import (
 	"github.com/runabove/metronome/src/metronome/models"
 )
 
-type jobConsumer struct {
+// JobConsumer consumed jobs messages from a Kafka topic and send them as HTTP POST request.
+type JobConsumer struct {
 	consumer *saramaC.Consumer
 }
 
-func NewJobConsumer() (*jobConsumer, error) {
+// NewJobConsumer returns a new job consumer.
+func NewJobConsumer() (*JobConsumer, error) {
 	brokers := viper.GetStringSlice("kafka.brokers")
 
 	config := saramaC.NewConfig()
 	config.ClientID = "metronome-worker"
-	// config.Consumer.Offsets.Initial = sarama.OffsetOldest
 
-	consumer, err := saramaC.NewConsumer(brokers, "worker", []string{constants.KAFKA_TOPIC_JOBS}, config)
+	consumer, err := saramaC.NewConsumer(brokers, "worker", []string{constants.KafkaTopicJobs}, config)
 	if err != nil {
 		return nil, err
 	}
 
-	jc := &jobConsumer{
+	jc := &JobConsumer{
 		consumer: consumer,
 	}
 
@@ -50,11 +51,14 @@ func NewJobConsumer() (*jobConsumer, error) {
 	return jc, nil
 }
 
-func (jc *jobConsumer) Close() error {
+// Close the consumer.
+func (jc *JobConsumer) Close() error {
 	return jc.consumer.Close()
 }
 
-func (jc *jobConsumer) handleMsg(msg *sarama.ConsumerMessage) {
+// Handle message from Kafka.
+// Forward them as http POST.
+func (jc *JobConsumer) handleMsg(msg *sarama.ConsumerMessage) {
 	var j models.Job
 	if err := j.FromKafka(msg); err != nil {
 		log.Error(err)

@@ -10,7 +10,7 @@ import (
 	"github.com/runabove/metronome/src/metronome/constants"
 )
 
-// Job consists of a plan execution.
+// Job is a task execution.
 type Job struct {
 	GUID    string
 	At      int64
@@ -18,16 +18,16 @@ type Job struct {
 	URN     string
 }
 
-// Serialize a Job to Kafka
+// ToKafka serialize a Job to Kafka.
 func (j *Job) ToKafka() *sarama.ProducerMessage {
 	return &sarama.ProducerMessage{
-		Topic: constants.KAFKA_TOPIC_JOBS,
+		Topic: constants.KafkaTopicJobs,
 		Key:   sarama.StringEncoder(j.GUID),
 		Value: sarama.StringEncoder(fmt.Sprintf("%v %v %v %v", j.GUID, j.At, j.Epsilon, j.URN)),
 	}
 }
 
-// Unserialize a Job to Kafka
+// FromKafka unserialize a Job from Kafka.
 func (j *Job) FromKafka(msg *sarama.ConsumerMessage) error {
 	key := string(msg.Key)
 	segs := strings.Split(string(msg.Value), " ")

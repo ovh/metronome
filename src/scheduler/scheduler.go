@@ -1,3 +1,12 @@
+// Scheduler plan tasks executions.
+//
+// Usage
+//
+// 		scheduler  [flags]
+// Flags:
+//       --config string            config file to use
+//       --help                     display help
+//   -v, --verbose                  verbose output
 package main
 
 import (

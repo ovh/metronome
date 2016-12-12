@@ -12,20 +12,20 @@ import (
 )
 
 var cfgFile string
-var Verbose bool
+var verbose bool
 
-// Scheduler init - define command line arguments
+// Aggregator init - define command line arguments.
 func init() {
 	cobra.OnInitialize(initConfig)
 	RootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file to use")
-	RootCmd.PersistentFlags().BoolVarP(&Verbose, "verbose", "v", false, "verbose output")
+	RootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "verbose output")
 
 	viper.BindPFlags(RootCmd.Flags())
 }
 
-// Load config - initialize defaults and read config
+// Load config - initialize defaults and read config.
 func initConfig() {
-	if Verbose {
+	if verbose {
 		log.SetLevel(log.DebugLevel)
 	}
 
@@ -71,7 +71,7 @@ func initConfig() {
 	}
 }
 
-// Main aggregator command - launch task scheduling process
+// RootCmd launch the aggregator agent.
 var RootCmd = &cobra.Command{
 	Use:   "metronome-aggregator",
 	Short: "Metronome aggregator update task database",
@@ -80,12 +80,12 @@ Complete documentation is available at http://runabove.github.io/metronome`,
 	Run: func(cmd *cobra.Command, args []string) {
 		log.Info("Metronome Worker starting")
 
-		log.Info("Started")
-
 		tc, err := consumers.NewTaskConsumer()
 		if err != nil {
 			log.Fatal(err)
 		}
+
+		log.Info("Started")
 
 		// Trap SIGINT to trigger a shutdown.
 		sigint := make(chan os.Signal, 1)

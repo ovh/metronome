@@ -12,20 +12,20 @@ import (
 )
 
 var cfgFile string
-var Verbose bool
+var verbose bool
 
 // Scheduler init - define command line arguments
 func init() {
 	cobra.OnInitialize(initConfig)
 	RootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file to use")
-	RootCmd.PersistentFlags().BoolVarP(&Verbose, "verbose", "v", false, "verbose output")
+	RootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "verbose output")
 
 	viper.BindPFlags(RootCmd.Flags())
 }
 
 // Load config - initialize defaults and read config
 func initConfig() {
-	if Verbose {
+	if verbose {
 		log.SetLevel(log.DebugLevel)
 	}
 
@@ -71,7 +71,7 @@ func initConfig() {
 	}
 }
 
-// Main worker command - launch task scheduling process
+// RootCmd launch the worker agent.
 var RootCmd = &cobra.Command{
 	Use:   "metronome-worker",
 	Short: "Metronome worker execute jobs",

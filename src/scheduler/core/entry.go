@@ -8,7 +8,7 @@ import (
 	"github.com/runabove/metronome/src/metronome/models"
 )
 
-// Entry consists of a task with execution time management.
+// Entry is a task with execution time management.
 type Entry struct {
 	// The task to run
 	task models.Task
@@ -25,7 +25,7 @@ type Entry struct {
 	next int64
 }
 
-// Return a new entry
+// NewEntry return a new entry.
 func NewEntry(task models.Task) (*Entry, error) {
 	segs := strings.Split(string(task.Schedule), "/")
 
@@ -49,30 +49,30 @@ func NewEntry(task models.Task) (*Entry, error) {
 	}, nil
 }
 
-// Check if entry is semanticaly the same as a task
+// SameAs check if entry is semanticaly the same as a task.
 func (e *Entry) SameAs(t models.Task) bool {
 	return e.task.URN == t.URN &&
 		e.task.Schedule == t.Schedule
 }
 
-// Return the task epsilon
+// Epsilon return the task epsilon.
 func (e *Entry) Epsilon() int64 {
 	return int64(e.epsilon)
 }
 
-// Return the task urn
+// URN return the task urn.
 func (e *Entry) URN() string {
 	return e.task.URN
 }
 
-// Return the next execution time
-// Return -1 if invalid
+// Next return the next execution time.
+// Return -1 if invalid.
 func (e *Entry) Next() int64 {
 	return e.next
 }
 
-// Plan the next execution time
-// Return -1 if invalid
+// Plan the next execution time.
+// Return -1 if invalid.
 func (e *Entry) Plan(now int64, past bool) (int64, bool) {
 	if e.next > now {
 		return e.next, false
@@ -105,38 +105,36 @@ func (e *Entry) Plan(now int64, past bool) (int64, bool) {
 
 		e.next = next
 		return e.next, true
-	} else {
-		if e.months == 0 && e.years == 0 {
+	}
+	// date mode
+	if e.months == 0 && e.years == 0 {
+		return -1, false
+	}
+
+	n := int(0)
+	nowT := time.Unix(now, 0)
+
+	if e.start.Unix() < nowT.Unix() {
+		dy := nowT.Year() - e.start.Year()
+		dm := int(nowT.Month() - e.start.Month())
+		dd := int(nowT.Day() - e.start.Day())
+
+		if dd < 0 {
+			dm--
+		}
+
+		n = dy*12 + dm + 1
+		if int64(n) > e.repeat {
 			return -1, false
 		}
-
-		n := int(0)
-		nowT := time.Unix(now, 0)
-
-		if e.start.Unix() < nowT.Unix() {
-			dy := nowT.Year() - e.start.Year()
-			dm := int(nowT.Month() - e.start.Month())
-			dd := int(nowT.Day() - e.start.Day())
-
-			if dd < 0 {
-				dm--
-			}
-
-			n = dy*12 + dm + 1
-			if int64(n) > e.repeat {
-				return -1, false
-			}
-		}
-
-		next := e.start.AddDate(0, n, 0)
-
-		if e.start.Day() != next.Day() {
-			next = next.AddDate(0, 0, -next.Day())
-		}
-
-		e.next = next.Unix()
-		return e.next, true
 	}
-	e.next = -1
-	return -1, false
+
+	next := e.start.AddDate(0, n, 0)
+
+	if e.start.Day() != next.Day() {
+		next = next.AddDate(0, 0, -next.Day())
+	}
+
+	e.next = next.Unix()
+	return e.next, true
 }

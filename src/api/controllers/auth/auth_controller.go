@@ -10,13 +10,14 @@ import (
 	userSrv "github.com/runabove/metronome/src/api/services/user"
 )
 
-type AccessTokenQuery struct {
+type accessTokenQuery struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
 }
 
+// AccessToken endoint handle token requests.
 func AccessToken(w http.ResponseWriter, r *http.Request) {
-	var accessTokenQuery AccessTokenQuery
+	var accessTokenQuery accessTokenQuery
 
 	body, err := in.JSON(r, &accessTokenQuery)
 	if err != nil {
@@ -35,6 +36,6 @@ func AccessToken(w http.ResponseWriter, r *http.Request) {
 		out.Unauthorized(w)
 		return
 	}
-	token := authSrv.GenerateToken(user.Id, user.Roles)
+	token := authSrv.GenerateToken(user.ID, user.Roles)
 	out.JSON(w, 200, token)
 }
