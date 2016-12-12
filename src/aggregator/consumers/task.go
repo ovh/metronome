@@ -69,7 +69,7 @@ func (tc *taskConsumer) handleMsg(msg *sarama.ConsumerMessage) {
 		return
 	}
 
-	_, err := db.Model(&t).OnConflict("(GUID) DO UPDATE").Set("name = ?name", "urn = ?urn", "schedule = ?schedule").Insert()
+	_, err := db.Model(&t).OnConflict("(guid) DO UPDATE").Set("name = ?name", "urn = ?urn", "schedule = ?schedule").Insert()
 	if err != nil {
 		log.Errorf("%v", err) // TODO log for replay or not commit
 	}

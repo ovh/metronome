@@ -15,7 +15,7 @@ import (
 )
 
 type Task struct {
-	GUID      string    `json:"-",sql:"GUID,pk"`
+	GUID      string    `json:"-",sql:"guid,pk"`
 	Id        string    `json:"id",sql:"-"`
 	UserId    string    `json:"user_id"`
 	Name      string    `json:"name"`
