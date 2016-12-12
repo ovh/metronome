@@ -5,4 +5,6 @@ const (
 	KafkaTopicTasks = "tasks"
 	// KafkaTopicJobs kafka topic used for jobs
 	KafkaTopicJobs = "jobs"
+	// KafkaTopicStates kafka topic used for states
+	KafkaTopicStates = "states"
 )

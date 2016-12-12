@@ -55,6 +55,11 @@ func (e *Entry) SameAs(t models.Task) bool {
 		e.task.Schedule == t.Schedule
 }
 
+// UserID return the task user ID.
+func (e *Entry) UserID() string {
+	return e.task.UserID
+}
+
 // Epsilon return the task epsilon.
 func (e *Entry) Epsilon() int64 {
 	return int64(e.epsilon)

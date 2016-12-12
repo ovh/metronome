@@ -1,5 +1,5 @@
-hash: 9f2308c23e88e1915b55cf369f039e9257fcd2802c15adf3580899c1bf8cb580
-updated: 2016-12-10T14:08:11.731753535-05:00
+hash: 849d8048eb8abe4915a286ea580d5f11baf2e6d5855e51acabf8cb37d528bb56
+updated: 2016-12-12T18:13:39.724310526-05:00
 imports:
 - name: github.com/d33d33/sarama-cluster
   version: 7f63f9e1f4c350d3b180261e3818e0b97e9ef6cc
@@ -100,14 +100,24 @@ imports:
   subpackages:
   - transform
   - unicode/norm
+- name: gopkg.in/bsm/ratelimit.v1
+  version: db14e161995a5177acef654cb0dd785e8ee8bc22
 - name: gopkg.in/pg.v5
-  version: 9cfde8bcff926439c623e6fee04595ae609b84df
+  version: c98c32b159bd3b1de70a7f8191aae5da7713ed52
   subpackages:
   - internal
   - internal/parser
   - internal/pool
   - orm
   - types
+- name: gopkg.in/redis.v5
+  version: c6acf2ed159b22defbd9f077686cff03eba1e9b3
+  subpackages:
+  - internal
+  - internal/consistenthash
+  - internal/hashtag
+  - internal/pool
+  - internal/proto
 - name: gopkg.in/yaml.v2
   version: a5b47d31c556af34a302ce5d659e6fea44d90de0
 testImports: []

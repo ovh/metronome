@@ -173,7 +173,7 @@ func (ts *TaskScheduler) handleTask(t models.Task) {
 			if e.Next() > 0 && e.Next() <= at {
 				p, ok := e.Next(), true
 				for ok && p <= at {
-					jobs = append(jobs, models.Job{t.GUID, p, e.Epsilon(), e.URN()})
+					jobs = append(jobs, models.Job{t.GUID, t.UserID, p, e.Epsilon(), e.URN()})
 					p, ok = e.Plan(at, !taskUpdate)
 				}
 			}
@@ -237,7 +237,7 @@ func (ts *TaskScheduler) handlePlanning() {
 		if e.Next() > 0 && e.Next() <= ts.now {
 			p, ok := e.Next(), true
 			for ok && p <= ts.now {
-				jobs = append(jobs, models.Job{k, p, e.Epsilon(), e.URN()})
+				jobs = append(jobs, models.Job{k, e.UserID(), p, e.Epsilon(), e.URN()})
 				fmt.Printf("*")
 				p, ok = e.Plan(ts.now, true)
 			}

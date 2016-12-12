@@ -23,3 +23,5 @@ import:
   - bcrypt
 - package: gopkg.in/pg.v5
   version: ^5.1.5
+- package: gopkg.in/redis.v5
+  version: ^5.1.3
