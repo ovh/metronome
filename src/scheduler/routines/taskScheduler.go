@@ -112,13 +112,13 @@ func (ts *taskScheduler) Jobs() <-chan []models.Job {
 // Handle incomming task
 func (ts *taskScheduler) handleTask(t models.Task) {
 	if t.Schedule == "" {
-		log.Infof("DELETE task: %s", t.Guid)
-		delete(ts.entries, t.Guid)
+		log.Infof("DELETE task: %s", t.GUID)
+		delete(ts.entries, t.GUID)
 		c := ts.nextExec
 		for i := 0; i < c.Len(); i++ {
 			if c.Value != nil {
 				// Clear schedule execution
-				c.Value.(batch).jobs[t.Guid] = make([]models.Job, 0)
+				c.Value.(batch).jobs[t.GUID] = make([]models.Job, 0)
 			}
 
 			c = c.Next()
@@ -127,10 +127,10 @@ func (ts *taskScheduler) handleTask(t models.Task) {
 	}
 
 	taskUpdate := false
-	if ts.entries[t.Guid] != nil {
+	if ts.entries[t.GUID] != nil {
 		taskUpdate = true
-		if ts.entries[t.Guid].SameAs(t) {
-			log.Infof("NOP task: %s", t.Guid)
+		if ts.entries[t.GUID].SameAs(t) {
+			log.Infof("NOP task: %s", t.GUID)
 			return
 		}
 
@@ -138,16 +138,16 @@ func (ts *taskScheduler) handleTask(t models.Task) {
 		c := ts.nextExec
 		for i := 0; i < c.Len(); i++ {
 			if c.Value != nil {
-				c.Value.(batch).jobs[t.Guid] = make([]models.Job, 0)
+				c.Value.(batch).jobs[t.GUID] = make([]models.Job, 0)
 			}
 			c = c.Next()
 		}
 	}
 
 	if !taskUpdate {
-		log.Infof("NEW task: %s", t.Guid)
+		log.Infof("NEW task: %s", t.GUID)
 	} else {
-		log.Infof("UPDATE task: %s", t.Guid)
+		log.Infof("UPDATE task: %s", t.GUID)
 	}
 
 	// Update entries
@@ -156,13 +156,13 @@ func (ts *taskScheduler) handleTask(t models.Task) {
 		log.Errorf("unprocessable task(%v)", t)
 		return
 	}
-	ts.entries[t.Guid] = e
+	ts.entries[t.GUID] = e
 
 	// Plan executions
 	c := ts.nextExec
 	for i := 0; i < c.Len(); i++ {
 		if c.Value != nil {
-			jobs := c.Value.(batch).jobs[t.Guid]
+			jobs := c.Value.(batch).jobs[t.GUID]
 			at := c.Value.(batch).at
 
 			if e.Next() < 0 {
@@ -171,38 +171,38 @@ func (ts *taskScheduler) handleTask(t models.Task) {
 			if e.Next() > 0 && e.Next() <= at {
 				p, ok := e.Next(), true
 				for ok && p <= at {
-					jobs = append(jobs, models.Job{t.Guid, p, e.Epsilon(), e.Urn()})
+					jobs = append(jobs, models.Job{t.GUID, p, e.Epsilon(), e.URN()})
 					p, ok = e.Plan(at, !taskUpdate)
 				}
 			}
-			c.Value.(batch).jobs[t.Guid] = jobs
+			c.Value.(batch).jobs[t.GUID] = jobs
 		}
 
 		c = c.Next()
 	}
 
-	if ts.entries[t.Guid] == nil {
+	if ts.entries[t.GUID] == nil {
 		// e, err := core.NewEntry(t)
 		// if err != nil {
 		// 	log.Errorf("unprocessable task(%v)", t)
 		// 	return
 		// }
-		// ts.entries[t.Guid] = e
+		// ts.entries[t.GUID] = e
 
 		// Plan
-		jobs := ts.plan.Value.(batch).jobs[t.Guid]
+		jobs := ts.plan.Value.(batch).jobs[t.GUID]
 		p, ok := e.Plan(ts.now, true)
 		for ok && p <= ts.now {
-			jobs = append(jobs, models.Job{t.Guid, p, e.Epsilon(), e.Urn()})
+			jobs = append(jobs, models.Job{t.GUID, p, e.Epsilon(), e.URN()})
 			p, ok = e.Plan(ts.now, true)
 		}
-		ts.plan.Value.(batch).jobs[t.Guid] = jobs
+		ts.plan.Value.(batch).jobs[t.GUID] = jobs
 
 		return
 	}
 
-	// if ts.entries[t.Guid].SameAs(t) {
-	// 	log.Infof("NOP task: %s", t.Guid)
+	// if ts.entries[t.GUID].SameAs(t) {
+	// 	log.Infof("NOP task: %s", t.GUID)
 	// 	return
 	// }
 
@@ -211,16 +211,16 @@ func (ts *taskScheduler) handleTask(t models.Task) {
 	// 	log.Errorf("unprocessable task(%v)", t)
 	// 	return
 	// }
-	// ts.entries[t.Guid] = e
+	// ts.entries[t.GUID] = e
 
 	// c := ts.nextExec
 	// for i := 0; i < c.Len(); i++ {
 	// 	if c.Value != nil {
 	// 		// Clear schedule execution
-	// 		c.Value.(batch).jobs[t.Guid] = make([]models.Job, 0)
+	// 		c.Value.(batch).jobs[t.GUID] = make([]models.Job, 0)
 	//
 	// 		// Plan
-	// 		jobs := c.Value.(batch).jobs[t.Guid]
+	// 		jobs := c.Value.(batch).jobs[t.GUID]
 	// 		at := c.Value.(batch).at
 	//
 	// 		if e.Next() < 0 {
@@ -229,11 +229,11 @@ func (ts *taskScheduler) handleTask(t models.Task) {
 	// 		if e.Next() > 0 && e.Next() <= at {
 	// 			p, ok := e.Next(), true
 	// 			for ok && p <= at {
-	// 				jobs = append(jobs, models.Job{t.Guid, p, e.Epsilon(), e.Urn()})
+	// 				jobs = append(jobs, models.Job{t.GUID, p, e.Epsilon(), e.URN()})
 	// 				p, ok = e.Plan(at, true)
 	// 			}
 	// 		}
-	// 		c.Value.(batch).jobs[t.Guid] = jobs
+	// 		c.Value.(batch).jobs[t.GUID] = jobs
 	// 	}
 	//
 	// 	c = c.Next()
@@ -297,7 +297,7 @@ func (ts *taskScheduler) handlePlanning() {
 		if e.Next() > 0 && e.Next() <= ts.now {
 			p, ok := e.Next(), true
 			for ok && p <= ts.now {
-				jobs = append(jobs, models.Job{k, p, e.Epsilon(), e.Urn()})
+				jobs = append(jobs, models.Job{k, p, e.Epsilon(), e.URN()})
 				fmt.Printf("*")
 				p, ok = e.Plan(ts.now, true)
 			}
