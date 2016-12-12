@@ -20,14 +20,15 @@ type batch struct {
 
 // TaskScheduler handle the internal states of the scheduler
 type TaskScheduler struct {
-	entries  map[string]*core.Entry
-	nextExec *ring.Ring
-	plan     *ring.Ring
-	now      int64
-	jobs     chan []models.Job
-	stop     chan int
-	planning chan int
-	dispatch chan int
+	entries   map[string]*core.Entry
+	nextExec  *ring.Ring
+	plan      *ring.Ring
+	now       int64
+	jobs      chan []models.Job
+	stop      chan int
+	planning  chan int
+	dispatch  chan int
+	nextTimer *time.Timer
 }
 
 // NewTaskScheduler return a new task scheduler
@@ -101,6 +102,7 @@ func (ts *TaskScheduler) Start() {
 func (ts *TaskScheduler) Stop() {
 	close(ts.dispatch)
 	close(ts.planning)
+	ts.nextTimer.Stop()
 	ts.stop <- 1
 }
 
@@ -203,7 +205,7 @@ func (ts *TaskScheduler) handleDispatch() {
 		return
 	}
 
-	time.AfterFunc(time.Duration(ts.nextExec.Value.(batch).at-now)*time.Second, func() {
+	ts.nextTimer = time.AfterFunc(time.Duration(ts.nextExec.Value.(batch).at-now)*time.Second, func() {
 		ts.dispatch <- 1
 	})
 

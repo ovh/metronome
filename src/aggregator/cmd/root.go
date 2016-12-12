@@ -78,7 +78,7 @@ var RootCmd = &cobra.Command{
 	Long: `Metronome is a distributed and fault-tolerant event scheduler built with love by ovh teams and friends in Go.
 Complete documentation is available at http://runabove.github.io/metronome`,
 	Run: func(cmd *cobra.Command, args []string) {
-		log.Info("Metronome Worker starting")
+		log.Info("Metronome Aggregator starting")
 
 		tc, err := consumers.NewTaskConsumer()
 		if err != nil {
