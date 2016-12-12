@@ -21,7 +21,7 @@ func NewTaskConsumer() (*TaskConsumer, error) {
 	brokers := viper.GetStringSlice("kafka.brokers")
 
 	config := saramaC.NewConfig()
-	config.ClientID = "metronome-scheduler"
+	config.ClientID = "metronome-aggregator"
 	config.Consumer.Offsets.Initial = sarama.OffsetOldest
 
 	consumer, err := saramaC.NewConsumer(brokers, "aggregator", []string{constants.KafkaTopicTasks}, config)

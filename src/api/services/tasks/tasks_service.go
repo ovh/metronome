@@ -2,13 +2,17 @@
 package taskSrv
 
 import (
+	log "github.com/Sirupsen/logrus"
+
+	amodels "github.com/runabove/metronome/src/api/models"
 	"github.com/runabove/metronome/src/metronome/models"
 	"github.com/runabove/metronome/src/metronome/pg"
+	"github.com/runabove/metronome/src/metronome/redis"
 )
 
 // All retrive all the tasks of a user.
 // Return nil if no task.
-func All(userID string) *models.Tasks {
+func All(userID string) *amodels.TasksAns {
 
 	var tasks models.Tasks
 	db := pg.DB()
@@ -22,5 +26,24 @@ func All(userID string) *models.Tasks {
 		return nil
 	}
 
-	return &tasks
+	states := redis.DB().HGetAll(userID)
+	if states.Err() != nil {
+		panic(states.Err())
+	}
+
+	var ans amodels.TasksAns
+	for _, t := range tasks {
+		var s models.State
+		s.FromJSON(states.Val()[t.GUID])
+		ans = append(ans, amodels.TaskAns{
+			t,
+			s.At,
+			s.State,
+		})
+		log.Info(t.GUID)
+	}
+
+	log.Info(states)
+
+	return &ans
 }

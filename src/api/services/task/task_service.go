@@ -6,7 +6,8 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 
-	"github.com/runabove/metronome/src/api/core"
+	acore "github.com/runabove/metronome/src/api/core"
+	"github.com/runabove/metronome/src/metronome/core"
 	"github.com/runabove/metronome/src/metronome/models"
 )
 
@@ -19,7 +20,7 @@ func Create(task *models.Task) bool {
 		task.ID = core.Sha256(task.UserID + task.Name + string(task.CreatedAt.Unix()))
 	}
 
-	k := core.GetKafka()
+	k := acore.GetKafka()
 
 	_, _, err := k.Producer.SendMessage(task.ToKafka())
 	if err != nil {
@@ -32,7 +33,7 @@ func Create(task *models.Task) bool {
 // Delete a task.
 // Return true if success.
 func Delete(id string, userID string) bool {
-	k := core.GetKafka()
+	k := acore.GetKafka()
 
 	t := &models.Task{
 		ID:     id,

@@ -10,8 +10,8 @@ import (
 
 	"github.com/Shopify/sarama"
 
-	"github.com/runabove/metronome/src/api/core"
 	"github.com/runabove/metronome/src/metronome/constants"
+	"github.com/runabove/metronome/src/metronome/core"
 )
 
 // Task holds task attributes.
@@ -70,7 +70,7 @@ func (t *Task) FromKafka(msg *sarama.ConsumerMessage) error {
 	return nil
 }
 
-// ToJSON serialize a Task as JSONa.
+// ToJSON serialize a Task as JSON.
 func (t *Task) ToJSON() string {
 	out, err := json.Marshal(t)
 	if err != nil {

@@ -85,6 +85,11 @@ Complete documentation is available at http://runabove.github.io/metronome`,
 			log.Fatal(err)
 		}
 
+		sc, err := consumers.NewStateConsumer()
+		if err != nil {
+			log.Fatal(err)
+		}
+
 		log.Info("Started")
 
 		// Trap SIGINT to trigger a shutdown.
@@ -93,11 +98,16 @@ Complete documentation is available at http://runabove.github.io/metronome`,
 
 		<-sigint
 		log.Info("Shuting down")
-		err = tc.Close()
+		errT := tc.Close()
 
-		if err != nil {
-			log.Fatal(err)
+		errS := sc.Close()
+
+		if errT != nil {
+			log.Fatal(errT)
 		}
 
+		if errS != nil {
+			log.Fatal(errS)
+		}
 	},
 }

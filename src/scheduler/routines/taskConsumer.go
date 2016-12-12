@@ -66,16 +66,7 @@ func NewTaskComsumer() (*TaskConsumer, error) {
 	}
 
 	// Drain timeout
-	go func() {
-		select {
-		case <-time.After(700 * time.Millisecond):
-			if !tc.drained {
-				tc.drained = true
-				ticker.Stop()
-				tc.drainWg.Done()
-			}
-		}
-	}()
+	timeout := time.NewTicker(700 * time.Millisecond)
 
 	go func() {
 		for {
@@ -88,9 +79,17 @@ func NewTaskComsumer() (*TaskConsumer, error) {
 				tc.handleMsg(msg)
 
 				offsets[msg.Partition] = msg.Offset
+				timeout.Stop()
 				if !tc.drained && tc.isDrained(hwm, offsets) {
+					ticker.Stop()
+					tc.drained = true
+					tc.drainWg.Done()
+				}
+			case <-timeout.C:
+				if !tc.drained {
 					tc.drained = true
 					ticker.Stop()
+					timeout.Stop()
 					tc.drainWg.Done()
 				}
 			}

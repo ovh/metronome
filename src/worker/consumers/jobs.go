@@ -18,6 +18,7 @@ import (
 // JobConsumer consumed jobs messages from a Kafka topic and send them as HTTP POST request.
 type JobConsumer struct {
 	consumer *saramaC.Consumer
+	producer sarama.SyncProducer
 }
 
 // NewJobConsumer returns a new job consumer.
@@ -26,14 +27,27 @@ func NewJobConsumer() (*JobConsumer, error) {
 
 	config := saramaC.NewConfig()
 	config.ClientID = "metronome-worker"
+	config.Producer.RequiredAcks = sarama.WaitForAll
+	config.Producer.Timeout = 1 * time.Second
+	config.Producer.Compression = sarama.CompressionGZIP
+	config.Producer.Flush.Frequency = 500 * time.Millisecond
+	config.Producer.Partitioner = sarama.NewHashPartitioner
+	config.Producer.Return.Successes = true
+	config.Producer.Retry.Max = 3
 
 	consumer, err := saramaC.NewConsumer(brokers, "worker", []string{constants.KafkaTopicJobs}, config)
 	if err != nil {
 		return nil, err
 	}
 
+	producer, err := sarama.NewSyncProducer(brokers, &config.Config)
+	if err != nil {
+		return nil, err
+	}
+
 	jc := &JobConsumer{
-		consumer: consumer,
+		consumer,
+		producer,
 	}
 
 	go func() {
@@ -65,6 +79,8 @@ func (jc *JobConsumer) handleMsg(msg *sarama.ConsumerMessage) {
 		return
 	}
 
+	start := time.Now().Unix()
+
 	v := url.Values{}
 	v.Set("time", strconv.FormatInt(j.At, 10))
 	v.Set("epsilon", strconv.FormatInt(j.Epsilon, 10))
@@ -75,8 +91,32 @@ func (jc *JobConsumer) handleMsg(msg *sarama.ConsumerMessage) {
 		"time":    j.At,
 		"epsilon": j.Epsilon,
 		"urn":     j.URN,
-		"at":      time.Now().Unix(),
+		"at":      start,
 	}).Debug("POST")
 
-	http.PostForm(j.URN, v)
+	res, err := http.PostForm(j.URN, v)
+	s := models.State{
+		"",
+		j.GUID,
+		j.UserID,
+		j.At,
+		start,
+		10,
+		j.URN,
+		models.Success,
+	}
+
+	if err != nil {
+		log.Warn(err)
+		s.State = models.Failed
+	} else if res.StatusCode < 200 || res.StatusCode >= 300 {
+		s.State = models.Failed
+	}
+	if err == nil {
+		res.Body.Close()
+	}
+
+	if _, _, err := jc.producer.SendMessage(s.ToKafka()); err != nil {
+		log.Errorf("FAILED to send message: %s\n", err)
+	}
 }
