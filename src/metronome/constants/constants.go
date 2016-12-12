@@ -1,6 +1,8 @@
 package constants
 
 const (
-	KAFKA_TOPIC_TASKS = "tasks"
-	KAFKA_TOPIC_JOBS  = "jobs"
+	// KafkaTopicTasks kafka topic used for tasks
+	KafkaTopicTasks = "tasks"
+	// KafkaTopicJobs kafka topic used for jobs
+	KafkaTopicJobs = "jobs"
 )

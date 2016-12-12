@@ -11,6 +11,7 @@ import (
 	userSrv "github.com/runabove/metronome/src/api/services/user"
 )
 
+// Create endpoint handle the user account creation.
 func Create(w http.ResponseWriter, r *http.Request) {
 	var user models.User
 
@@ -41,6 +42,7 @@ func Create(w http.ResponseWriter, r *http.Request) {
 	out.JSON(w, 200, user)
 }
 
+// Edit endoint handle user edit.
 func Edit(w http.ResponseWriter, r *http.Request) {
 	token := authSrv.GetToken(r.Header.Get("Authorization"))
 	if token == nil {
@@ -62,7 +64,7 @@ func Edit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	duplicated := userSrv.Edit(authSrv.UserId(token), &user)
+	duplicated := userSrv.Edit(authSrv.UserID(token), &user)
 	if duplicated {
 		var errs []core.JSONSchemaErr
 		errs = append(errs, core.JSONSchemaErr{
@@ -77,6 +79,7 @@ func Edit(w http.ResponseWriter, r *http.Request) {
 	out.Success(w)
 }
 
+// Current endoint return the user bind to the token.
 func Current(w http.ResponseWriter, r *http.Request) {
 	token := authSrv.GetToken(r.Header.Get("Authorization"))
 	if token == nil {
@@ -84,7 +87,7 @@ func Current(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user := userSrv.Get(authSrv.UserId(token))
+	user := userSrv.Get(authSrv.UserID(token))
 	if user == nil {
 		out.NotFound(w)
 		return

@@ -11,11 +11,13 @@ import (
 	"github.com/runabove/metronome/src/api/models"
 )
 
+// AuthClaims add roles to the jwt claims.
 type AuthClaims struct {
 	Roles []string `json:"roles"`
 	jwt.StandardClaims
 }
 
+// GenerateToken return a new token.
 func GenerateToken(userID string, roles []string) models.Token {
 	claims := AuthClaims{
 		roles,
@@ -40,17 +42,19 @@ func GenerateToken(userID string, roles []string) models.Token {
 	return models.Token{tokenString}
 }
 
+// GetToken return a token from a token string.
+// Return nil if the token string is invalid or if the token as expired.
 func GetToken(tokenString string) *jwt.Token {
 	token, err := jwt.ParseWithClaims(tokenString, &AuthClaims{}, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
-		} else {
-			key, err := hex.DecodeString(viper.GetString("token.key"))
-			if err != nil {
-				panic(err)
-			}
-			return key, nil
 		}
+
+		key, err := hex.DecodeString(viper.GetString("token.key"))
+		if err != nil {
+			panic(err)
+		}
+		return key, nil
 	})
 
 	if err == nil && token.Valid {
@@ -59,11 +63,13 @@ func GetToken(tokenString string) *jwt.Token {
 	return nil
 }
 
+// UserID return the user id from a token.
 func UserID(token *jwt.Token) string {
 	claims := token.Claims.(*AuthClaims)
 	return claims.Subject
 }
 
+// Roles return the roles from a token.
 func Roles(token *jwt.Token) []string {
 	claims := token.Claims.(*AuthClaims)
 	return claims.Roles

@@ -8,6 +8,7 @@ import (
 	tasksSrv "github.com/runabove/metronome/src/api/services/tasks"
 )
 
+// All endoint return the user tasks.
 func All(w http.ResponseWriter, r *http.Request) {
 	token := authSrv.GetToken(r.Header.Get("Authorization"))
 	if token == nil {
@@ -15,6 +16,6 @@ func All(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tasks := tasksSrv.All(authSrv.UserId(token))
+	tasks := tasksSrv.All(authSrv.UserID(token))
 	out.JSON(w, 200, tasks)
 }

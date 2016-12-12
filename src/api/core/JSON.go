@@ -6,22 +6,30 @@ import (
 	"github.com/xeipuuv/gojsonschema"
 )
 
+// JSONSchemaErr describe error in schema validation.
 type JSONSchemaErr struct {
 	Field       string `json:"field"`
 	Type        string `json:"type"`
 	Description string `json:"description"`
 }
 
+// JSONValidationResult describe result of the schema validation.
 type JSONValidationResult struct {
 	Valid  bool
 	Errors []JSONSchemaErr
 }
 
+// ValidateJSON check a JSON string against a JSON schema.
+// See: http://json-schema.org/
 func ValidateJSON(root, schema, input string) *JSONValidationResult {
 	var f interface{}
-	err := json.Unmarshal(MustAsset(root+"/schema/"+schema+".json"), &f)
+	if err := json.Unmarshal(MustAsset(root+"/schema/"+schema+".json"), &f); err != nil {
+		panic(err)
+	}
 	s := f.(map[string]interface{})
-	err = json.Unmarshal(MustAsset(root+"/schema/definitions.json"), &f)
+	if err := json.Unmarshal(MustAsset(root+"/schema/definitions.json"), &f); err != nil {
+		panic(err)
+	}
 	defs := f.(map[string]interface{})
 	s["definitions"] = defs
 

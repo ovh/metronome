@@ -1,3 +1,4 @@
+// Package userSrv handle user database operations.
 package userSrv
 
 import (
@@ -7,6 +8,8 @@ import (
 	"github.com/runabove/metronome/src/metronome/pg"
 )
 
+// Login made a lookup on the database base on username and perform password comparaison.
+// It return nil if the username is unknown or the password mismatch.
 func Login(username, password string) *models.User {
 	db := pg.DB()
 
@@ -29,6 +32,8 @@ func Login(username, password string) *models.User {
 	return &user
 }
 
+// Create a new user into the database.
+// Return true if the username already exist.
 func Create(user *models.User) (duplicated bool) {
 	user.Password = genPassword(user.Password)
 
@@ -46,7 +51,9 @@ func Create(user *models.User) (duplicated bool) {
 	return false
 }
 
-func Edit(userId string, user *models.User) (duplicated bool) {
+// Edit a user in the database.
+// Return true if the username already exist.
+func Edit(userID string, user *models.User) (duplicated bool) {
 	db := pg.DB()
 
 	var cols []string
@@ -56,7 +63,7 @@ func Edit(userId string, user *models.User) (duplicated bool) {
 		cols = append(cols, "password")
 	}
 
-	user.Id = userId
+	user.ID = userID
 	_, err := db.Model(&user).OnConflict("DO NOTHING").Column(cols...).Update()
 
 	if err != nil {
@@ -67,11 +74,13 @@ func Edit(userId string, user *models.User) (duplicated bool) {
 	return false
 }
 
-func Get(userId string) *models.User {
+// Get a user from the database.
+// Return nil if the user is not found.
+func Get(userID string) *models.User {
 	db := pg.DB()
 
 	var users models.Users
-	err := db.Model(&users).Where("user_id = ?", userId).Select()
+	err := db.Model(&users).Where("user_id = ?", userID).Select()
 	if err != nil {
 		panic(err)
 	}
@@ -86,6 +95,7 @@ func Get(userId string) *models.User {
 	return &user
 }
 
+// genPassword hash password using bcrypt.
 func genPassword(password string) string {
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {

@@ -1,3 +1,4 @@
+// Package taskSrv handle task Kafka messages.
 package taskSrv
 
 import (
@@ -9,14 +10,16 @@ import (
 	"github.com/runabove/metronome/src/metronome/models"
 )
 
+// Create a new task.
+// Return true if success.
 func Create(task *models.Task) bool {
 	task.CreatedAt = time.Now()
 
-	if len(task.Id) == 0 {
-		task.Id = core.Sha256(task.UserId + task.Name + string(task.CreatedAt.Unix()))
+	if len(task.ID) == 0 {
+		task.ID = core.Sha256(task.UserID + task.Name + string(task.CreatedAt.Unix()))
 	}
 
-	k := core.Kafka()
+	k := core.GetKafka()
 
 	_, _, err := k.Producer.SendMessage(task.ToKafka())
 	if err != nil {
@@ -26,12 +29,14 @@ func Create(task *models.Task) bool {
 	return true
 }
 
-func Delete(id string, userId string) bool {
-	k := core.Kafka()
+// Delete a task.
+// Return true if success.
+func Delete(id string, userID string) bool {
+	k := core.GetKafka()
 
 	t := &models.Task{
-		Id:     id,
-		UserId: userId,
+		ID:     id,
+		UserID: userID,
 	}
 
 	_, _, err := k.Producer.SendMessage(t.ToKafka())

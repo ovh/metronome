@@ -18,8 +18,8 @@ type batch struct {
 	jobs map[string][]models.Job
 }
 
-// taskScheduler handle the internal states of the scheduler
-type taskScheduler struct {
+// TaskScheduler handle the internal states of the scheduler
+type TaskScheduler struct {
 	entries  map[string]*core.Entry
 	nextExec *ring.Ring
 	plan     *ring.Ring
@@ -30,11 +30,11 @@ type taskScheduler struct {
 	dispatch chan int
 }
 
-// Return a new task scheduler
-func NewTaskScheduler(tasks <-chan models.Task) *taskScheduler {
+// NewTaskScheduler return a new task scheduler
+func NewTaskScheduler(tasks <-chan models.Task) *TaskScheduler {
 	const buffSize = 20
 
-	ts := &taskScheduler{
+	ts := &TaskScheduler{
 		plan:     ring.New(buffSize),
 		entries:  make(map[string]*core.Entry),
 		now:      int64(time.Now().Unix()),
@@ -92,25 +92,25 @@ func NewTaskScheduler(tasks <-chan models.Task) *taskScheduler {
 }
 
 // Start task scheduling
-func (ts *taskScheduler) Start() {
+func (ts *TaskScheduler) Start() {
 	ts.planning <- 1
 	ts.dispatch <- 1
 }
 
 // Stop the scheduler
-func (ts *taskScheduler) Stop() {
+func (ts *TaskScheduler) Stop() {
 	close(ts.dispatch)
 	close(ts.planning)
 	ts.stop <- 1
 }
 
-// Out jobs channel
-func (ts *taskScheduler) Jobs() <-chan []models.Job {
+// Jobs return the out jobs channel
+func (ts *TaskScheduler) Jobs() <-chan []models.Job {
 	return ts.jobs
 }
 
 // Handle incomming task
-func (ts *taskScheduler) handleTask(t models.Task) {
+func (ts *TaskScheduler) handleTask(t models.Task) {
 	if t.Schedule == "" {
 		log.Infof("DELETE task: %s", t.GUID)
 		delete(ts.entries, t.GUID)
@@ -180,72 +180,10 @@ func (ts *taskScheduler) handleTask(t models.Task) {
 
 		c = c.Next()
 	}
-
-	if ts.entries[t.GUID] == nil {
-		// e, err := core.NewEntry(t)
-		// if err != nil {
-		// 	log.Errorf("unprocessable task(%v)", t)
-		// 	return
-		// }
-		// ts.entries[t.GUID] = e
-
-		// Plan
-		jobs := ts.plan.Value.(batch).jobs[t.GUID]
-		p, ok := e.Plan(ts.now, true)
-		for ok && p <= ts.now {
-			jobs = append(jobs, models.Job{t.GUID, p, e.Epsilon(), e.URN()})
-			p, ok = e.Plan(ts.now, true)
-		}
-		ts.plan.Value.(batch).jobs[t.GUID] = jobs
-
-		return
-	}
-
-	// if ts.entries[t.GUID].SameAs(t) {
-	// 	log.Infof("NOP task: %s", t.GUID)
-	// 	return
-	// }
-
-	// e, err := core.NewEntry(t)
-	// if err != nil {
-	// 	log.Errorf("unprocessable task(%v)", t)
-	// 	return
-	// }
-	// ts.entries[t.GUID] = e
-
-	// c := ts.nextExec
-	// for i := 0; i < c.Len(); i++ {
-	// 	if c.Value != nil {
-	// 		// Clear schedule execution
-	// 		c.Value.(batch).jobs[t.GUID] = make([]models.Job, 0)
-	//
-	// 		// Plan
-	// 		jobs := c.Value.(batch).jobs[t.GUID]
-	// 		at := c.Value.(batch).at
-	//
-	// 		if e.Next() < 0 {
-	// 			e.Plan(at, false)
-	// 		}
-	// 		if e.Next() > 0 && e.Next() <= at {
-	// 			p, ok := e.Next(), true
-	// 			for ok && p <= at {
-	// 				jobs = append(jobs, models.Job{t.GUID, p, e.Epsilon(), e.URN()})
-	// 				p, ok = e.Plan(at, true)
-	// 			}
-	// 		}
-	// 		c.Value.(batch).jobs[t.GUID] = jobs
-	// 	}
-	//
-	// 	c = c.Next()
-	// }
-}
-
-func (ts *taskScheduler) planTask() {
-
 }
 
 // Dispatch jobs executions
-func (ts *taskScheduler) handleDispatch() {
+func (ts *TaskScheduler) handleDispatch() {
 	now := time.Now().Unix()
 	for ts.nextExec.Value != nil && ts.nextExec.Value.(batch).at <= now {
 		var jobs []models.Job
@@ -277,7 +215,7 @@ func (ts *taskScheduler) handleDispatch() {
 }
 
 // Plan next executions
-func (ts *taskScheduler) handlePlanning() {
+func (ts *TaskScheduler) handlePlanning() {
 	if ts.plan.Next().Value != nil {
 		return
 	}

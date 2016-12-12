@@ -11,16 +11,16 @@ import (
 	"github.com/runabove/metronome/src/metronome/models"
 )
 
-// jobProducer handle the internal states of the producer
-type jobProducer struct {
+// JobProducer handle the internal states of the producer.
+type JobProducer struct {
 	producer sarama.AsyncProducer
 	wg       sync.WaitGroup
 	stopSig  chan int
 }
 
-// Return a new job producer
-// Read jobs to send from jobs channel
-func NewJobProducer(jobs <-chan []models.Job) *jobProducer {
+// NewJobProducer return a new job producer.
+// Read jobs to send from jobs channel.
+func NewJobProducer(jobs <-chan []models.Job) *JobProducer {
 	config := sarama.NewConfig()
 	config.ClientID = "metronome-scheduler"
 	config.Producer.RequiredAcks = sarama.WaitForLocal
@@ -37,7 +37,7 @@ func NewJobProducer(jobs <-chan []models.Job) *jobProducer {
 		panic(err)
 	}
 
-	jp := &jobProducer{
+	jp := &JobProducer{
 		producer: producer,
 		stopSig:  make(chan int),
 	}
@@ -60,8 +60,8 @@ func NewJobProducer(jobs <-chan []models.Job) *jobProducer {
 	}()
 
 	// Success handling
+	jp.wg.Add(1)
 	go func() {
-		jp.wg.Add(1)
 		for {
 			select {
 			case msg, ok := <-producer.Successes():
@@ -75,8 +75,8 @@ func NewJobProducer(jobs <-chan []models.Job) *jobProducer {
 	}()
 
 	// Failure handling
+	jp.wg.Add(1)
 	go func() {
-		jp.wg.Add(1)
 		for {
 			select {
 			case err, ok := <-producer.Errors():
@@ -93,7 +93,7 @@ func NewJobProducer(jobs <-chan []models.Job) *jobProducer {
 }
 
 // Close the job producer
-func (jp *jobProducer) Close() {
+func (jp *JobProducer) Close() {
 	jp.stopSig <- 1
 	jp.producer.AsyncClose()
 	jp.wg.Wait()

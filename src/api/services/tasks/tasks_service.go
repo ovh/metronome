@@ -1,16 +1,19 @@
-package userSrv
+// Package taskSrv handle tasks database operations.
+package taskSrv
 
 import (
 	"github.com/runabove/metronome/src/metronome/models"
 	"github.com/runabove/metronome/src/metronome/pg"
 )
 
-func All(userId string) *models.Tasks {
+// All retrive all the tasks of a user.
+// Return nil if no task.
+func All(userID string) *models.Tasks {
 
 	var tasks models.Tasks
 	db := pg.DB()
 
-	err := db.Model(&tasks).Where("user_id = ?", userId).Select()
+	err := db.Model(&tasks).Where("user_id = ?", userID).Select()
 	if err != nil {
 		panic(err)
 	}

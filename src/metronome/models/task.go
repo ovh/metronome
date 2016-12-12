@@ -14,29 +14,34 @@ import (
 	"github.com/runabove/metronome/src/metronome/constants"
 )
 
+// Task holds task attributes.
 type Task struct {
 	GUID      string    `json:"-",sql:"guid,pk"`
-	Id        string    `json:"id",sql:"-"`
-	UserId    string    `json:"user_id"`
+	ID        string    `json:"id",sql:"-"`
+	UserID    string    `json:"user_id"`
 	Name      string    `json:"name"`
 	Schedule  string    `json:"schedule"`
 	URN       string    `json:"URN"`
 	CreatedAt time.Time `json:"created_at"`
 }
+
+// Tasks is a Task list
 type Tasks []Task
 
+// ToKafka serialize a Task to Kafka.
 func (t *Task) ToKafka() *sarama.ProducerMessage {
 	if len(t.GUID) == 0 {
-		t.GUID = core.Sha256(t.UserId + t.Id)
+		t.GUID = core.Sha256(t.UserID + t.ID)
 	}
 
 	return &sarama.ProducerMessage{
-		Topic: constants.KAFKA_TOPIC_TASKS,
+		Topic: constants.KafkaTopicTasks,
 		Key:   sarama.StringEncoder(t.GUID),
-		Value: sarama.StringEncoder(fmt.Sprintf("%v %v %v %v %v %v", t.UserId, t.Id, t.Schedule, t.URN, url.QueryEscape(t.Name), t.CreatedAt.Unix())),
+		Value: sarama.StringEncoder(fmt.Sprintf("%v %v %v %v %v %v", t.UserID, t.ID, t.Schedule, t.URN, url.QueryEscape(t.Name), t.CreatedAt.Unix())),
 	}
 }
 
+// FromKafka unserialize a Task from Kafka.
 func (t *Task) FromKafka(msg *sarama.ConsumerMessage) error {
 	key := string(msg.Key)
 	segs := strings.Split(string(msg.Value), " ")
@@ -55,8 +60,8 @@ func (t *Task) FromKafka(msg *sarama.ConsumerMessage) error {
 	}
 
 	t.GUID = key
-	t.UserId = segs[0]
-	t.Id = segs[1]
+	t.UserID = segs[0]
+	t.ID = segs[1]
 	t.Schedule = segs[2]
 	t.URN = segs[3]
 	t.Name = name
@@ -65,6 +70,7 @@ func (t *Task) FromKafka(msg *sarama.ConsumerMessage) error {
 	return nil
 }
 
+// ToJSON serialize a Task as JSONa.
 func (t *Task) ToJSON() string {
 	out, err := json.Marshal(t)
 	if err != nil {
