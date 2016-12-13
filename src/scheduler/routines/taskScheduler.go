@@ -25,9 +25,9 @@ type TaskScheduler struct {
 	plan      *ring.Ring
 	now       int64
 	jobs      chan []models.Job
-	stop      chan int
-	planning  chan int
-	dispatch  chan int
+	stop      chan struct{}
+	planning  chan struct{}
+	dispatch  chan struct{}
 	nextTimer *time.Timer
 }
 
@@ -40,9 +40,9 @@ func NewTaskScheduler(tasks <-chan models.Task) *TaskScheduler {
 		entries:  make(map[string]*core.Entry),
 		now:      int64(time.Now().Unix()),
 		jobs:     make(chan []models.Job, buffSize),
-		stop:     make(chan int),
-		planning: make(chan int, 1),
-		dispatch: make(chan int, 1),
+		stop:     make(chan struct{}),
+		planning: make(chan struct{}, 1),
+		dispatch: make(chan struct{}, 1),
 	}
 	ts.plan.Value = batch{
 		ts.now,
@@ -94,8 +94,8 @@ func NewTaskScheduler(tasks <-chan models.Task) *TaskScheduler {
 
 // Start task scheduling
 func (ts *TaskScheduler) Start() {
-	ts.planning <- 1
-	ts.dispatch <- 1
+	ts.planning <- struct{}{}
+	ts.dispatch <- struct{}{}
 }
 
 // Stop the scheduler
@@ -103,7 +103,7 @@ func (ts *TaskScheduler) Stop() {
 	close(ts.dispatch)
 	close(ts.planning)
 	ts.nextTimer.Stop()
-	ts.stop <- 1
+	ts.stop <- struct{}{}
 }
 
 // Jobs return the out jobs channel
@@ -200,18 +200,18 @@ func (ts *TaskScheduler) handleDispatch() {
 	if ts.nextExec.Value == nil {
 		// NOP
 		time.AfterFunc(300*time.Millisecond, func() {
-			ts.dispatch <- 1
+			ts.dispatch <- struct{}{}
 		})
 		return
 	}
 
 	ts.nextTimer = time.AfterFunc(time.Duration(ts.nextExec.Value.(batch).at-now)*time.Second, func() {
-		ts.dispatch <- 1
+		ts.dispatch <- struct{}{}
 	})
 
 	// Trigger planning
 	select {
-	case ts.planning <- 1:
+	case ts.planning <- struct{}{}:
 	default:
 	}
 }
@@ -251,7 +251,7 @@ func (ts *TaskScheduler) handlePlanning() {
 	// Plan next batch if available
 	if next.Value == nil {
 		select {
-		case ts.planning <- 1:
+		case ts.planning <- struct{}{}:
 		default:
 		}
 	}
