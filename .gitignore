@@ -21,6 +21,8 @@ _cgo_export.*
 
 _testmain.go
 
+.sync-config.cson
+
 *.exe
 *.test
 *.bench
