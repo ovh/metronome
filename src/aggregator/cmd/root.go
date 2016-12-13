@@ -19,6 +19,12 @@ func init() {
 	cobra.OnInitialize(initConfig)
 	RootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file to use")
 	RootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "verbose output")
+	RootCmd.Flags().String("pg.addr", "127.0.0.1:5432", "postgres address")
+	RootCmd.Flags().String("pg.user", "metronome", "postgres user")
+	RootCmd.Flags().String("pg.password", "metropass", "postgres password")
+	RootCmd.Flags().String("pg.database", "metronome", "postgres database")
+	RootCmd.Flags().StringSlice("kafka.brokers", []string{"localhost:9092"}, "kafka brokers address")
+	RootCmd.Flags().String("redis.addr", "127.0.0.1:6379", "redis address")
 
 	viper.BindPFlags(RootCmd.Flags())
 }
@@ -28,9 +34,6 @@ func initConfig() {
 	if verbose {
 		log.SetLevel(log.DebugLevel)
 	}
-
-	// Defaults
-	viper.SetDefault("kafka.brokers", []string{"localhost:9092"})
 
 	// Bind environment variables
 	viper.SetEnvPrefix("mtragg")

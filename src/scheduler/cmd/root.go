@@ -19,6 +19,7 @@ func init() {
 	cobra.OnInitialize(initConfig)
 	RootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file to use")
 	RootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "verbose output")
+	RootCmd.Flags().StringSlice("kafka.brokers", []string{"localhost:9092"}, "kafka brokers address")
 
 	viper.BindPFlags(RootCmd.Flags())
 }
@@ -28,9 +29,6 @@ func initConfig() {
 	if verbose {
 		log.SetLevel(log.DebugLevel)
 	}
-
-	// Defaults
-	viper.SetDefault("kafka.brokers", []string{"localhost:9092"})
 
 	// Bind environment variables
 	viper.SetEnvPrefix("mtrsch")

@@ -46,7 +46,7 @@ func NewTaskComsumer() (*TaskConsumer, error) {
 		tasks:    make(chan models.Task),
 	}
 
-	hwm := tc.highWaterMarks()
+	hwm := <-tc.highWaterMarks()
 	offsets := make(map[int32]int64)
 	messages := 0
 
@@ -132,24 +132,34 @@ func (tc *TaskConsumer) handleMsg(msg *sarama.ConsumerMessage) {
 }
 
 // Retrive highWaterMarks for each partition
-func (tc *TaskConsumer) highWaterMarks() map[int32]int64 {
-	res := make(map[int32]int64)
+func (tc *TaskConsumer) highWaterMarks() chan map[int32]int64 {
+	resChan := make(chan map[int32]int64)
 
-	parts, err := tc.client.Partitions(constants.KafkaTopicTasks)
-	if err != nil {
-		log.Panic(err)
-	}
+	go func() {
+		for {
+			parts, err := tc.client.Partitions(constants.KafkaTopicTasks)
+			if err != nil {
+				log.Warn("Can't get topic. Retry")
+				continue
+			}
 
-	for p := range parts {
-		i, err := tc.client.GetOffset(constants.KafkaTopicTasks, int32(p), sarama.OffsetNewest)
-		if err != nil {
-			log.Panic(err)
+			res := make(map[int32]int64)
+			for p := range parts {
+				i, err := tc.client.GetOffset(constants.KafkaTopicTasks, int32(p), sarama.OffsetNewest)
+				if err != nil {
+					log.Panic(err)
+				}
+
+				res[int32(p)] = i
+			}
+
+			resChan <- res
+			close(resChan)
+			break
 		}
+	}()
 
-		res[int32(p)] = i
-	}
-
-	return res
+	return resChan
 }
 
 // Check if consumer reach EOF on all the partitions

@@ -28,7 +28,7 @@ func All(userID string) *amodels.TasksAns {
 
 	states := redis.DB().HGetAll(userID)
 	if states.Err() != nil {
-		panic(states.Err())
+		log.Error(states.Err()) // TODO log
 	}
 
 	var ans amodels.TasksAns
