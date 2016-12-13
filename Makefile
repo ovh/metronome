@@ -39,11 +39,15 @@ format:
 	gofmt -w -s ./src
 
 .PHONY: assets
-assets: src/api/core/assets.go
+assets: src/api/core/assets.go src/metronome/pg/schema.go
 
 src/api/core/assets.go: $$(call rwildcard, src/api, *.json)
 	@command -v go-bindata >/dev/null 2>&1 || { echo >&2 "go-bindata is required but not available please follow instructions from https://github.com/lestrrat/go-bindata"; exit 1; }
 	go-bindata -ignore=\\.*\\.go -o src/api/core/assets.go -pkg core -prefix "src/api/controllers" src/api/...
+
+src/metronome/pg/schema.go: $$(call rwildcard, src/metronome/pg/schema, *.sql)
+	@command -v go-bindata >/dev/null 2>&1 || { echo >&2 "go-bindata is required but not available please follow instructions from https://github.com/lestrrat/go-bindata"; exit 1; }
+	go-bindata -ignore=\\.*\\.go -o src/metronome/pg/schema.go -pkg pg -prefix "src/metronome/pg/schema" src/metronome/pg/schema/...
 
 
 .PHONY: dev
