@@ -3,6 +3,7 @@ package redis
 import (
 	"sync"
 
+	"github.com/d33d33/viper" // FIXME https://github.com/spf13/viper/pull/285
 	"gopkg.in/redis.v5"
 )
 
@@ -17,7 +18,7 @@ var onceDB sync.Once
 func DB() *redis.Client {
 	onceDB.Do(func() {
 		redis := redis.NewClient(&redis.Options{
-			Addr:     "localhost:6379",
+			Addr:     viper.GetString("redis.addr"),
 			Password: "",
 			DB:       0,
 		})

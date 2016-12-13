@@ -26,6 +26,7 @@ func init() {
 	RootCmd.Flags().String("pg.password", "metropass", "postgres password")
 	RootCmd.Flags().String("pg.database", "metronome", "postgres database")
 	RootCmd.Flags().StringSlice("kafka.brokers", []string{"localhost:9092"}, "kafka brokers address")
+	RootCmd.Flags().String("redis.addr", "127.0.0.1:6379", "redis address")
 
 	viper.BindPFlags(RootCmd.Flags())
 }
