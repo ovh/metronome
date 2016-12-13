@@ -15,7 +15,7 @@ import (
 type JobProducer struct {
 	producer sarama.AsyncProducer
 	wg       sync.WaitGroup
-	stopSig  chan int
+	stopSig  chan struct{}
 }
 
 // NewJobProducer return a new job producer.
@@ -39,7 +39,7 @@ func NewJobProducer(jobs <-chan []models.Job) *JobProducer {
 
 	jp := &JobProducer{
 		producer: producer,
-		stopSig:  make(chan int),
+		stopSig:  make(chan struct{}),
 	}
 
 	go func() {
@@ -94,7 +94,7 @@ func NewJobProducer(jobs <-chan []models.Job) *JobProducer {
 
 // Close the job producer
 func (jp *JobProducer) Close() {
-	jp.stopSig <- 1
+	jp.stopSig <- struct{}{}
 	jp.producer.AsyncClose()
 	jp.wg.Wait()
 }
