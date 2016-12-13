@@ -79,7 +79,7 @@ func (jc *JobConsumer) handleMsg(msg *sarama.ConsumerMessage) {
 		return
 	}
 
-	start := time.Now().Unix()
+	start := time.Now()
 
 	v := url.Values{}
 	v.Set("time", strconv.FormatInt(j.At, 10))
@@ -100,8 +100,8 @@ func (jc *JobConsumer) handleMsg(msg *sarama.ConsumerMessage) {
 		j.GUID,
 		j.UserID,
 		j.At,
-		start,
-		10,
+		start.Unix(),
+		time.Since(start).Nanoseconds() / 1000,
 		j.URN,
 		models.Success,
 	}
