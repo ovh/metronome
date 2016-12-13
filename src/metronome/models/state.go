@@ -101,6 +101,7 @@ func (s *State) ToJSON() string {
 // FromJSON unserialize a State from JSON.
 func (s *State) FromJSON(in string) {
 	if len(in) == 0 {
+		s.State = -1
 		return
 	}
 
