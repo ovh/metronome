@@ -21,6 +21,10 @@ func init() {
 	RootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file to use")
 	RootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "verbose output")
 	RootCmd.Flags().StringP("api.http.listen", "l", "0.0.0.0:8080", "api listen addresse")
+	RootCmd.Flags().String("pg.addr", "127.0.0.1:5432", "postgres address")
+	RootCmd.Flags().String("pg.user", "metronome", "postgres user")
+	RootCmd.Flags().String("pg.password", "metropass", "postgres password")
+	RootCmd.Flags().String("pg.database", "metronome", "postgres database")
 
 	viper.BindPFlags(RootCmd.Flags())
 }

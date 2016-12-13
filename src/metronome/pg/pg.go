@@ -18,6 +18,7 @@ var onceDB sync.Once
 func DB() *pg.DB {
 	onceDB.Do(func() {
 		database := pg.Connect(&pg.Options{
+			Addr:     viper.GetString("pg.addr"),
 			User:     viper.GetString("pg.user"),
 			Password: viper.GetString("pg.password"),
 			Database: viper.GetString("pg.database"),
