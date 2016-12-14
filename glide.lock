@@ -1,5 +1,5 @@
-hash: 849d8048eb8abe4915a286ea580d5f11baf2e6d5855e51acabf8cb37d528bb56
-updated: 2016-12-12T18:13:39.724310526-05:00
+hash: 93fee0fd51448d42c125e27f8bf19f9c6e80c29747da4b96aa33f8486542113f
+updated: 2016-12-13T19:54:01.17067586-05:00
 imports:
 - name: github.com/d33d33/sarama-cluster
   version: 7f63f9e1f4c350d3b180261e3818e0b97e9ef6cc
@@ -27,6 +27,8 @@ imports:
   version: 08b5f424b9271eedf6f9f0ce86cb9396ed337a42
 - name: github.com/gorilla/mux
   version: 0eeaf8392f5b04950925b8a69fe70f110fa7cbfc
+- name: github.com/gorilla/websocket
+  version: 1f512fc3f05332ba7117626cdfb4e07474e58e60
 - name: github.com/hashicorp/hcl
   version: 37ab263305aaeb501a60eb16863e808d426e37f2
   subpackages:
@@ -103,7 +105,7 @@ imports:
 - name: gopkg.in/bsm/ratelimit.v1
   version: db14e161995a5177acef654cb0dd785e8ee8bc22
 - name: gopkg.in/pg.v5
-  version: c98c32b159bd3b1de70a7f8191aae5da7713ed52
+  version: e1e6e9138c9c8dacd34c8bb2556e937c634f294a
   subpackages:
   - internal
   - internal/parser

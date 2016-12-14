@@ -26,6 +26,7 @@ func InitRoutes() *mux.Router {
 	bind(router, "/tasks", TasksRoutes)
 	bind(router, "/auth", AuthRoutes)
 	bind(router, "/user", UserRoutes)
+	bind(router, "/ws", WsRoutes)
 	return router
 }
 
