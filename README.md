@@ -22,18 +22,17 @@ Currently Metronome is under heavy development.
 
 ## Quick start
 
- - Clone the repository
- - Install glide, follow instructions here https://glide.sh/
- - Download dependencies:
+The best way to test and develop Metronome is using docker, you will need [Docker Toolbox](https://www.docker.com/docker-toolbox) installed before proceding.
 
-    `glide install`
+- Clone the repository.
 
- - Build the agents
+- Run the included Docker Compose config:
 
-    `make`
+`docker-compose up -d`
 
- - Start Kafka and PostgreSQL
- - Launch the agents under `build` foder
+This will start, PostgreSQL, Redis, Kafka and Metronome instances.
+
+Open your browser and navigate to `localhost:8081`
 
 ## Contributing
 

@@ -3,12 +3,16 @@ MAINTAINER d33d33 <kevin@d33d33.fr>
 
 EXPOSE 8080
 
-# Install glide
-RUN curl https://glide.sh/get | sh
-
 # Setup work directory
 RUN mkdir -p /go/src/github.com/runabove/metronome
 WORKDIR /go/src/github.com/runabove/metronome
+
+# Get wait-for-it
+ADD https://raw.githubusercontent.com/vishnubob/wait-for-it/master/wait-for-it.sh ./wait-for-it.sh
+RUN chmod +x ./wait-for-it.sh
+
+# Install glide
+RUN curl https://glide.sh/get | sh
 
 # Setup GO ENV
 ENV GOPATH /go
