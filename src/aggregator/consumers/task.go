@@ -9,6 +9,7 @@ import (
 	"github.com/runabove/metronome/src/metronome/constants"
 	"github.com/runabove/metronome/src/metronome/models"
 	"github.com/runabove/metronome/src/metronome/pg"
+	"github.com/runabove/metronome/src/metronome/redis"
 )
 
 // TaskConsumer consumed tasks messages from a Kafka topic to maintain the tasks database.
@@ -78,5 +79,8 @@ func (tc *TaskConsumer) handleMsg(msg *sarama.ConsumerMessage) {
 	_, err := db.Model(&t).OnConflict("(guid) DO UPDATE").Set("name = ?name").Set("urn = ?urn").Set("schedule = ?schedule").Insert()
 	if err != nil {
 		log.Errorf("%v", err) // TODO log for replay or not commit
+	}
+	if err := redis.DB().PublishTopic(t.UserID, "task", t.ToJSON()).Err(); err != nil {
+		log.Error(err)
 	}
 }
