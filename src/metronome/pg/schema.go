@@ -104,7 +104,7 @@ func usersSQL() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "users.sql", size: 470, mode: os.FileMode(420), modTime: time.Unix(1481632927, 0)}
+	info := bindataFileInfo{name: "users.sql", size: 470, mode: os.FileMode(420), modTime: time.Unix(1481656369, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }

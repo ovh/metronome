@@ -25,3 +25,5 @@ import:
   version: ^5.1.5
 - package: gopkg.in/redis.v5
   version: ^5.1.3
+- package: github.com/gorilla/websocket
+  version: ^1.0.0

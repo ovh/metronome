@@ -8,14 +8,19 @@ import (
 )
 
 type db struct {
-	DB *redis.Client
+	DB *Client
 }
 
 var d *db
 var onceDB sync.Once
 
+// Client is a redis client
+type Client struct {
+	*redis.Client
+}
+
 // DB get a database instance
-func DB() *redis.Client {
+func DB() *Client {
 	onceDB.Do(func() {
 		redis := redis.NewClient(&redis.Options{
 			Addr:     viper.GetString("redis.addr"),
@@ -24,8 +29,13 @@ func DB() *redis.Client {
 		})
 
 		d = &db{
-			DB: redis,
+			DB: &Client{redis},
 		}
 	})
 	return d.DB
+}
+
+// PublishTopic send a message to a given topic
+func (c *Client) PublishTopic(channel, topic, message string) *redis.IntCmd {
+	return c.Publish(channel, topic+":"+message)
 }

@@ -67,4 +67,7 @@ func (sc *StateConsumer) handleMsg(msg *sarama.ConsumerMessage) {
 	if err := redis.DB().HSet(s.UserID, s.TaskGUID, s.ToJSON()).Err(); err != nil {
 		panic(err)
 	}
+	if err := redis.DB().PublishTopic(s.UserID, "state", s.ToJSON()).Err(); err != nil {
+		log.Error(err)
+	}
 }

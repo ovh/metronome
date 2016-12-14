@@ -40,10 +40,7 @@ func All(userID string) *amodels.TasksAns {
 			s.At,
 			s.State,
 		})
-		log.Info(t.GUID)
 	}
-
-	log.Info(states)
 
 	return &ans
 }
