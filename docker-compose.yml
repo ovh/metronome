@@ -33,7 +33,7 @@ services:
   ui:
     build: git://github.com/runabove/metronome-ui
     ports:
-      - "8081:8080"
+      - "8080:8080"
   api:
     links:
       - postgres
@@ -41,22 +41,22 @@ services:
       - redis
     build: .
     ports:
-      - "8080:8080"
-    command: metronome-api --pg.addr=postgres:5432 --kafka.brokers=kafka:9092 --redis.addr=redis:6379
+      - "8081:8080"
+    command: ./wait-for-it.sh kafka:9092 -- metronome-api --pg.addr=postgres:5432 --kafka.brokers=kafka:9092 --redis.addr=redis:6379
   scheduler:
     links:
       - kafka
     build: .
-    command: metronome-scheduler --kafka.brokers=kafka:9092
+    command: ./wait-for-it.sh kafka:9092 -- metronome-scheduler --kafka.brokers=kafka:9092
   aggregator:
     links:
       - postgres
       - kafka
       - redis
     build: .
-    command: metronome-aggregator --pg.addr=postgres:5432 --kafka.brokers=kafka:9092 --redis.addr=redis:6379
+    command: ./wait-for-it.sh kafka:9092 -- metronome-aggregator --pg.addr=postgres:5432 --kafka.brokers=kafka:9092 --redis.addr=redis:6379
   worker:
     links:
       - kafka
     build: .
-    command: metronome-worker --kafka.brokers=kafka:9092
+    command: ./wait-for-it.sh kafka:9092 -- metronome-worker --kafka.brokers=kafka:9092
