@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/d33d33/viper" // FIXME https://github.com/spf13/viper/pull/285
 	jwt "github.com/dgrijalva/jwt-go"
+	"github.com/spf13/viper"
 
 	"github.com/runabove/metronome/src/api/models"
 )

@@ -6,7 +6,7 @@ import:
   version: ^0.11.0
 - package: github.com/d33d33/sarama-cluster
   version: ^2.1.3
-- package: github.com/d33d33/viper
+- package: github.com/spf13/viper
 - package: github.com/dgrijalva/jwt-go
   version: ^3.0.0
 - package: github.com/gorilla/mux

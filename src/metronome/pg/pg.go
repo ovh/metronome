@@ -3,7 +3,7 @@ package pg
 import (
 	"sync"
 
-	"github.com/d33d33/viper" // FIXME https://github.com/spf13/viper/pull/285
+	"github.com/spf13/viper"
 	"gopkg.in/pg.v5"
 )
 
