@@ -10,7 +10,7 @@ import (
 	"github.com/runabove/metronome/src/metronome/redis"
 )
 
-// All retrive all the tasks of a user.
+// All retrieve all the tasks of a user.
 // Return nil if no task.
 func All(userID string) *amodels.TasksAns {
 

@@ -8,5 +8,5 @@ import (
 var UserRoutes = Routes{
 	Route{"Create a user", "POST", "/", userCtrl.Create},
 	Route{"Edit a user", "PATCH", "/", userCtrl.Edit},
-	Route{"Retrive current user", "GET", "/", userCtrl.Current},
+	Route{"Retrieve current user", "GET", "/", userCtrl.Current},
 }

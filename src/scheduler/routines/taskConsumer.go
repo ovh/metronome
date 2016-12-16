@@ -112,7 +112,7 @@ func (tc *TaskConsumer) handleMsg(msg *sarama.ConsumerMessage) {
 	tc.tasks <- t
 }
 
-// Retrive highWaterMarks for each partition
+// Retrieve highWaterMarks for each partition
 func (tc *TaskConsumer) highWaterMarks() chan map[int32]int64 {
 	resChan := make(chan map[int32]int64)
 
