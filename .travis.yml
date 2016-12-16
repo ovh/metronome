@@ -9,6 +9,9 @@ go_import_path: github.com/runabove/metronome
 before_install:
   - go get github.com/Masterminds/glide
   - go get github.com/alecthomas/gometalinter
+  - go get github.com/onsi/ginkgo/ginkgo
+  - go get github.com/onsi/gomega
+  - go get github.com/modocache/gover
 
 before_script:
   gometalinter --install --update
@@ -17,3 +20,8 @@ script:
   - glide install
   - make lint
   - make
+  - ginkgo -r --randomizeAllSpecs --randomizeSuites --failOnPending --cover --trace --race --progress --compilers=2
+  - gover ./src coverage.txt
+
+after_success:
+  - bash <(curl -s https://codecov.io/bash)
