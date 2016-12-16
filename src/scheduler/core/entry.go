@@ -1,7 +1,9 @@
 package core
 
 import (
+	"fmt"
 	"math"
+	"strconv"
 	"strings"
 	"time"
 
@@ -22,12 +24,18 @@ type Entry struct {
 	months int64
 	years  int64
 
-	next int64
+	next    int64
+	planned int64
+
+	initialized bool
 }
 
 // NewEntry return a new entry.
 func NewEntry(task models.Task) (*Entry, error) {
 	segs := strings.Split(string(task.Schedule), "/")
+	if len(segs) != 4 {
+		return nil, fmt.Errorf("Bad schedule %v", task.Schedule)
+	}
 
 	start, err := time.Parse(time.RFC3339, segs[1])
 	if err != nil {
@@ -36,17 +44,32 @@ func NewEntry(task models.Task) (*Entry, error) {
 
 	matches := durationRegex.FindStringSubmatch(segs[2])
 
-	return &Entry{
+	r, rS := int64(-1), segs[0][1:]
+	if len(rS) > 0 {
+		parsed, err := strconv.Atoi(rS)
+		if err != nil {
+			return nil, fmt.Errorf("Bad repeat %v", task.Schedule)
+		}
+		r = int64(parsed)
+	}
+
+	e := &Entry{
 		task:     task,
 		epsilon:  ParseDuration(strings.Replace(segs[3], "E", "P", 1)).Seconds(),
 		start:    start,
-		repeat:   99999999, // FIXME
+		repeat:   r,
 		timeMode: strings.Contains(segs[2], "T"),
 		period:   ParseDuration(segs[2]).Seconds(),
 		next:     -1,
 		years:    ParseInt64(matches[1]),
 		months:   ParseInt64(matches[2]),
-	}, nil
+	}
+
+	if e.period == 0 {
+		return nil, fmt.Errorf("Null period %v", task.Schedule)
+	}
+
+	return e, nil
 }
 
 // SameAs check if entry is semanticaly the same as a task.
@@ -70,76 +93,129 @@ func (e *Entry) URN() string {
 	return e.task.URN
 }
 
+// GUID return the task GUID.
+func (e *Entry) GUID() string {
+	return e.task.GUID
+}
+
 // Next return the next execution time.
 // Return -1 if invalid.
 func (e *Entry) Next() int64 {
 	return e.next
 }
 
-// Plan the next execution time.
-// Return -1 if invalid.
-func (e *Entry) Plan(now int64, past bool) (int64, bool) {
-	if e.next > now {
-		return e.next, false
-	}
-
-	if past {
-		now = now - int64(e.epsilon)
-	}
+// Init the planning system
+// Must be called before Plan
+func (e *Entry) Init(now time.Time) {
+	e.initialized = true
 
 	if e.timeMode {
-		if e.period == 0 {
-			return -1, false
-		}
-
-		start := e.start.Unix()
-		n := int64(0)
-		if start < now {
-			n = int64(math.Ceil(float64(now-start) / e.period))
-
-			if n > e.repeat {
-				e.next = -1
-				return -1, false
-			}
-		}
-
-		next := start + int64(e.period)*int64(n)
-		for next <= e.next {
-			next += int64(e.period)
-		}
-
-		e.next = next
-		return e.next, true
+		e.next = e.initTimeMode(now)
+		return // e.next, true
 	}
-	// date mode
-	if e.months == 0 && e.years == 0 {
-		return -1, false
+	e.next = e.initDateMode(now)
+
+}
+
+// initTimeMode compute first iteration for time period
+func (e *Entry) initTimeMode(now time.Time) int64 {
+	start := e.start.Unix()
+
+	if start >= now.Unix() {
+		e.planned = 1
+		return start
 	}
 
-	n := int(0)
-	nowT := time.Unix(now, 0)
+	n := int64(math.Ceil(float64(now.Unix()-start) / e.period))
 
-	if e.start.Unix() < nowT.Unix() {
-		dy := nowT.Year() - e.start.Year()
-		dm := int(nowT.Month() - e.start.Month())
-		dd := int(nowT.Day() - e.start.Day())
-
-		if dd < 0 {
-			dm--
-		}
-
-		n = dy*12 + dm + 1
-		if int64(n) > e.repeat {
-			return -1, false
-		}
+	if e.repeat >= 0 && n > e.repeat {
+		return -1
 	}
 
-	next := e.start.AddDate(0, n, 0)
+	next := start + int64(e.period)*int64(n)
+	for next <= e.next {
+		next += int64(e.period)
+	}
 
-	if e.start.Day() != next.Day() {
+	e.planned = (n + 1)
+	return next
+}
+
+// initDateMode compute first iteration for date period
+func (e *Entry) initDateMode(now time.Time) int64 {
+	if e.start.Unix() >= now.Unix() {
+		e.planned = 1
+		return e.start.Unix()
+	}
+
+	period := int(e.months + e.years*12)
+
+	dY := now.Year() - e.start.Year()
+	dM := int(now.Month() - e.start.Month())
+	dD := int(now.Day() - e.start.Day())
+	dh := int(now.Hour() - e.start.Hour())
+	dm := int(now.Minute() - e.start.Minute())
+	ds := int(now.Second() - e.start.Second())
+
+	n := dY*12 + dM/period
+	dt := (((dD*24+dh)*60)+dm)*60 + ds
+
+	if dt > 0 {
+		n++
+	}
+	if e.repeat >= 0 && int64(n) > e.repeat {
+		return -1
+	}
+
+	next := e.start.AddDate(0, n*period, 0)
+
+	dY = next.Year() - e.start.Year()
+	dM = int(next.Month() - e.start.Month())
+
+	// overshoot (due to month rollover)
+	if dY*12+dM > n*period {
 		next = next.AddDate(0, 0, -next.Day())
 	}
 
-	e.next = next.Unix()
-	return e.next, true
+	e.planned = int64(n + 1)
+	return next.Unix()
+}
+
+// Plan the next execution time.
+// Return true if planning as been updated.
+func (e *Entry) Plan(now time.Time) bool {
+	if !e.initialized {
+		panic("Unitialized entry. Please call init before")
+	}
+
+	if e.next >= now.Unix() {
+		return false
+	}
+
+	if e.repeat >= 0 && e.planned > e.repeat {
+		e.next = -1
+		return false
+	}
+
+	e.planned++
+
+	if e.timeMode {
+		e.next += int64(e.period)
+	} else {
+		// date mode
+		period := int(e.months + e.years*12)
+		next := e.start.AddDate(0, period*int(e.planned-1), 0)
+
+		dY := next.Year() - e.start.Year()
+		dM := int(next.Month() - e.start.Month())
+
+		// overshoot (due to month rollover)
+		if dY*12+dM > int(e.planned-1)*period {
+			next = next.AddDate(0, 0, -next.Day())
+		}
+
+		e.next = next.Unix()
+	}
+
+	return true
 }

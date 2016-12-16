@@ -54,19 +54,6 @@ func NewTaskComsumer() (*TaskConsumer, error) {
 
 	// Progress display
 	ticker := time.NewTicker(500 * time.Millisecond)
-	if log.GetLevel() == log.DebugLevel {
-		go func() {
-			for {
-				select {
-				case <-ticker.C:
-					log.WithField("count", messages).Debug("Loading tasks")
-				}
-			}
-		}()
-	}
-
-	// Drain timeout
-	timeout := time.NewTicker(700 * time.Millisecond)
 
 	go func() {
 		for {
@@ -79,19 +66,13 @@ func NewTaskComsumer() (*TaskConsumer, error) {
 				tc.handleMsg(msg)
 
 				offsets[msg.Partition] = msg.Offset
-				timeout.Stop()
 				if !tc.drained && tc.isDrained(hwm, offsets) {
 					ticker.Stop()
 					tc.drained = true
 					tc.drainWg.Done()
 				}
-			case <-timeout.C:
-				if !tc.drained {
-					tc.drained = true
-					ticker.Stop()
-					timeout.Stop()
-					tc.drainWg.Done()
-				}
+			case <-ticker.C:
+				log.WithField("count", messages).Debug("Loading tasks")
 			}
 		}
 	}()

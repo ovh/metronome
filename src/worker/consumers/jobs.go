@@ -96,14 +96,14 @@ func (jc *JobConsumer) handleMsg(msg *sarama.ConsumerMessage) {
 
 	res, err := http.PostForm(j.URN, v)
 	s := models.State{
-		"",
-		j.GUID,
-		j.UserID,
-		j.At,
-		start.Unix(),
-		time.Since(start).Nanoseconds() / 1000,
-		j.URN,
-		models.Success,
+		ID:       "",
+		TaskGUID: j.GUID,
+		UserID:   j.UserID,
+		At:       j.At,
+		DoneAt:   start.Unix(),
+		Duration: time.Since(start).Nanoseconds() / 1000,
+		URN:      j.URN,
+		State:    models.Success,
 	}
 
 	if err != nil {

@@ -3,7 +3,6 @@ package routines
 import (
 	"container/ring"
 	"fmt"
-	"math"
 	"time"
 
 	log "github.com/Sirupsen/logrus"
@@ -14,7 +13,7 @@ import (
 
 // batch represent a batch of job to send
 type batch struct {
-	at   int64
+	at   time.Time
 	jobs map[string][]models.Job
 }
 
@@ -23,7 +22,7 @@ type TaskScheduler struct {
 	entries   map[string]*core.Entry
 	nextExec  *ring.Ring
 	plan      *ring.Ring
-	now       int64
+	now       time.Time
 	jobs      chan []models.Job
 	stop      chan struct{}
 	planning  chan struct{}
@@ -38,7 +37,7 @@ func NewTaskScheduler(tasks <-chan models.Task) *TaskScheduler {
 	ts := &TaskScheduler{
 		plan:     ring.New(buffSize),
 		entries:  make(map[string]*core.Entry),
-		now:      int64(time.Now().Unix()),
+		now:      time.Now().UTC(),
 		jobs:     make(chan []models.Job, buffSize),
 		stop:     make(chan struct{}),
 		planning: make(chan struct{}, 1),
@@ -162,22 +161,14 @@ func (ts *TaskScheduler) handleTask(t models.Task) {
 
 	// Plan executions
 	c := ts.nextExec
+	e.Init(c.Value.(batch).at)
 	for i := 0; i < c.Len(); i++ {
 		if c.Value != nil {
-			jobs := c.Value.(batch).jobs[t.GUID]
-			at := c.Value.(batch).at
+			jobs := planEntryInBatch(e, c.Value.(batch).at)
 
-			if e.Next() < 0 {
-				e.Plan(at, !taskUpdate)
+			if len(jobs) > 0 {
+				c.Value.(batch).jobs[t.GUID] = jobs
 			}
-			if e.Next() > 0 && e.Next() <= at {
-				p, ok := e.Next(), true
-				for ok && p <= at {
-					jobs = append(jobs, models.Job{t.GUID, t.UserID, p, e.Epsilon(), e.URN()})
-					p, ok = e.Plan(at, !taskUpdate)
-				}
-			}
-			c.Value.(batch).jobs[t.GUID] = jobs
 		}
 
 		c = c.Next()
@@ -186,8 +177,8 @@ func (ts *TaskScheduler) handleTask(t models.Task) {
 
 // Dispatch jobs executions
 func (ts *TaskScheduler) handleDispatch() {
-	now := time.Now().Unix()
-	for ts.nextExec.Value != nil && ts.nextExec.Value.(batch).at <= now {
+	now := time.Now().UTC().Unix()
+	for ts.nextExec.Value != nil && ts.nextExec.Value.(batch).at.Unix() <= now {
 		var jobs []models.Job
 		for _, js := range ts.nextExec.Value.(batch).jobs {
 			jobs = append(jobs, js...)
@@ -198,14 +189,15 @@ func (ts *TaskScheduler) handleDispatch() {
 	}
 
 	if ts.nextExec.Value == nil {
-		// NOP
+		// NOP sleep a bit before next exec
 		time.AfterFunc(300*time.Millisecond, func() {
 			ts.dispatch <- struct{}{}
 		})
 		return
 	}
 
-	ts.nextTimer = time.AfterFunc(time.Duration(ts.nextExec.Value.(batch).at-now)*time.Second, func() {
+	nextRun := ts.nextExec.Value.(batch).at.Unix()
+	ts.nextTimer = time.AfterFunc(time.Duration(nextRun-now)*time.Second, func() {
 		ts.dispatch <- struct{}{}
 	})
 
@@ -223,26 +215,23 @@ func (ts *TaskScheduler) handlePlanning() {
 	}
 	ts.plan = ts.plan.Next()
 
-	ts.now = int64(math.Max(float64(ts.now+1), float64(time.Now().Unix())))
+	ts.now = ts.now.Add(1 * time.Second)
+	if ts.now.Before(time.Now()) {
+		ts.now = time.Now().UTC()
+	}
+
 	ts.plan.Value = batch{
 		ts.now,
 		make(map[string][]models.Job),
 	}
 
 	for k := range ts.entries {
-		e := ts.entries[k]
+		jobs := planEntryInBatch(ts.entries[k], ts.now)
 
-		jobs := ts.plan.Value.(batch).jobs[k]
-
-		if e.Next() > 0 && e.Next() <= ts.now {
-			p, ok := e.Next(), true
-			for ok && p <= ts.now {
-				jobs = append(jobs, models.Job{k, e.UserID(), p, e.Epsilon(), e.URN()})
-				fmt.Printf("*")
-				p, ok = e.Plan(ts.now, true)
-			}
+		if len(jobs) > 0 {
+			fmt.Printf("*")
+			ts.plan.Value.(batch).jobs[k] = jobs
 		}
-		ts.plan.Value.(batch).jobs[k] = jobs
 	}
 
 	fmt.Printf(".")
@@ -255,4 +244,16 @@ func (ts *TaskScheduler) handlePlanning() {
 		default:
 		}
 	}
+}
+
+func planEntryInBatch(entry *core.Entry, at time.Time) []models.Job {
+	jobs := make([]models.Job, 0)
+	entry.Plan(at)
+	for entry.Next() > 0 && entry.Next() <= at.Unix() {
+		jobs = append(jobs, models.Job{GUID: entry.GUID(), UserID: entry.UserID(), At: entry.Next(), Epsilon: entry.Epsilon(), URN: entry.URN()})
+		if !entry.Plan(at) {
+			break
+		}
+	}
+	return jobs
 }

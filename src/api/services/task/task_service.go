@@ -24,7 +24,7 @@ func Create(task *models.Task) bool {
 
 	_, _, err := k.Producer.SendMessage(task.ToKafka())
 	if err != nil {
-		log.Error("FAILED to send message: %s\n", err)
+		log.Errorf("FAILED to send message: %s\n", err)
 		return false
 	}
 	return true
@@ -42,7 +42,7 @@ func Delete(id string, userID string) bool {
 
 	_, _, err := k.Producer.SendMessage(t.ToKafka())
 	if err != nil {
-		log.Error("FAILED to send message: %s\n", err)
+		log.Errorf("FAILED to send message: %s\n", err)
 		return false
 	}
 	return true
