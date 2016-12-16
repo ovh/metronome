@@ -29,8 +29,8 @@ func Roles(token *jwt.Token) []string {
 	return oauth.Roles(token)
 }
 
-// AsRole check if the token as a role.
-func AsRole(role string, token *jwt.Token) bool {
+// HasRole check if the token as a role.
+func HasRole(role string, token *jwt.Token) bool {
 	for _, r := range Roles(token) {
 		if r == role {
 			return true
