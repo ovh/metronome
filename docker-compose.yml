@@ -20,7 +20,7 @@ services:
   kafka:
     links:
       - zookeeper
-    build: git://github.com/d33d33/kafka-docker
+    image: wurstmeister/kafka-docker
     expose:
       - "9092"
     environment:
