@@ -53,6 +53,13 @@ src/metronome/pg/schema.go: $$(call rwildcard, src/metronome/pg/schema, *.sql)
 .PHONY: dev
 dev: assets format lint agents
 
+.PHONY: test
+test:
+	ginkgo -r ./src
+.PHONY: testrun
+testrun:
+	ginkgo watch -r ./src
+
 .PHONY: clean
 clean:
 	-rm -r build
