@@ -20,7 +20,7 @@ services:
   kafka:
     links:
       - zookeeper
-    image: wurstmeister/kafka-docker
+    image: wurstmeister/kafka
     expose:
       - "9092"
     environment:
