@@ -6,7 +6,7 @@ import (
 
 	"github.com/Shopify/sarama"
 	log "github.com/Sirupsen/logrus"
-	"github.com/d33d33/viper" // FIXME https://github.com/spf13/viper/pull/285
+	"github.com/spf13/viper"
 
 	"github.com/runabove/metronome/src/metronome/models"
 )

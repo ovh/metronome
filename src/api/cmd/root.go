@@ -4,9 +4,9 @@ import (
 	"net/http"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/d33d33/viper" // FIXME https://github.com/spf13/viper/pull/285
 	"github.com/rs/cors"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"github.com/urfave/negroni"
 
 	"github.com/runabove/metronome/src/api/core"
