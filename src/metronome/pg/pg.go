@@ -24,14 +24,6 @@ func DB() *pg.DB {
 			Database: viper.GetString("pg.database"),
 		})
 
-		// Ensure tables
-		if _, err := database.Exec(string(MustAsset("users.sql"))); err != nil {
-			panic(err)
-		}
-		if _, err := database.Exec(string(MustAsset("tasks.sql"))); err != nil {
-			panic(err)
-		}
-
 		d = &db{
 			DB: database,
 		}

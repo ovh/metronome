@@ -34,9 +34,16 @@ services:
     build: git://github.com/runabove/metronome-ui
     ports:
       - "8080:8080"
-  api:
+
+  init_db:
     links:
       - postgres
+    build: .
+    command: ./wait-for-it.sh postgres:5432 -- metronome-api init-database --pg.addr=postgres:5432
+
+  api:
+    links:
+      - init_db
       - kafka
       - redis
     build: .
