@@ -35,7 +35,7 @@ func (t *Task) ToKafka() *sarama.ProducerMessage {
 	}
 
 	return &sarama.ProducerMessage{
-		Topic: constants.KafkaTopicTasks,
+		Topic: constants.KafkaTopicTasks(),
 		Key:   sarama.StringEncoder(t.GUID),
 		Value: sarama.StringEncoder(fmt.Sprintf("%v %v %v %v %v %v", t.UserID, t.ID, t.Schedule, t.URN, url.QueryEscape(t.Name), t.CreatedAt.Unix())),
 	}

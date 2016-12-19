@@ -22,7 +22,7 @@ type Job struct {
 // ToKafka serialize a Job to Kafka.
 func (j *Job) ToKafka() *sarama.ProducerMessage {
 	return &sarama.ProducerMessage{
-		Topic: constants.KafkaTopicJobs,
+		Topic: constants.KafkaTopicJobs(),
 		Key:   sarama.StringEncoder(j.GUID),
 		Value: sarama.StringEncoder(fmt.Sprintf("%v %v %v %v %v", j.GUID, j.UserID, j.At, j.Epsilon, j.URN)),
 	}

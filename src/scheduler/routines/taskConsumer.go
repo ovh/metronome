@@ -35,7 +35,7 @@ func NewTaskComsumer() (*TaskConsumer, error) {
 		return nil, err
 	}
 
-	consumer, err := saramaC.NewConsumerFromClient(client, "schedulers", []string{constants.KafkaTopicTasks})
+	consumer, err := saramaC.NewConsumerFromClient(client, "schedulers", []string{constants.KafkaTopicTasks()})
 	if err != nil {
 		return nil, err
 	}
@@ -118,7 +118,7 @@ func (tc *TaskConsumer) highWaterMarks() chan map[int32]int64 {
 
 	go func() {
 		for {
-			parts, err := tc.client.Partitions(constants.KafkaTopicTasks)
+			parts, err := tc.client.Partitions(constants.KafkaTopicTasks())
 			if err != nil {
 				log.Warn("Can't get topic. Retry")
 				continue
@@ -126,7 +126,7 @@ func (tc *TaskConsumer) highWaterMarks() chan map[int32]int64 {
 
 			res := make(map[int32]int64)
 			for p := range parts {
-				i, err := tc.client.GetOffset(constants.KafkaTopicTasks, int32(p), sarama.OffsetNewest)
+				i, err := tc.client.GetOffset(constants.KafkaTopicTasks(), int32(p), sarama.OffsetNewest)
 				if err != nil {
 					log.Panic(err)
 				}
@@ -145,7 +145,7 @@ func (tc *TaskConsumer) highWaterMarks() chan map[int32]int64 {
 
 // Check if consumer reach EOF on all the partitions
 func (tc *TaskConsumer) isDrained(hwm, offsets map[int32]int64) bool {
-	subs := tc.consumer.Subscriptions()[constants.KafkaTopicTasks]
+	subs := tc.consumer.Subscriptions()[constants.KafkaTopicTasks()]
 
 	for partition := range subs {
 		part := int32(partition)

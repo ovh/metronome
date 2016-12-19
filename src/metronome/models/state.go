@@ -42,7 +42,7 @@ func (s *State) ToKafka() *sarama.ProducerMessage {
 		s.ID = core.Sha256(s.TaskGUID + strconv.FormatInt(s.At, 10))
 	}
 	return &sarama.ProducerMessage{
-		Topic: constants.KafkaTopicStates,
+		Topic: constants.KafkaTopicStates(),
 		Key:   sarama.StringEncoder(s.ID),
 		Value: sarama.StringEncoder(fmt.Sprintf("%v %v %v %v %v %v %v", s.TaskGUID, s.UserID, s.At, s.URN, s.DoneAt, s.Duration, s.State)),
 	}

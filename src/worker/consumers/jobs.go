@@ -35,7 +35,7 @@ func NewJobConsumer() (*JobConsumer, error) {
 	config.Producer.Return.Successes = true
 	config.Producer.Retry.Max = 3
 
-	consumer, err := saramaC.NewConsumer(brokers, "worker", []string{constants.KafkaTopicJobs}, config)
+	consumer, err := saramaC.NewConsumer(brokers, "worker", []string{constants.KafkaTopicJobs()}, config)
 	if err != nil {
 		return nil, err
 	}
