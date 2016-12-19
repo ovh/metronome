@@ -8,6 +8,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/spf13/viper"
 
+	"github.com/runabove/metronome/src/metronome/kafka"
 	"github.com/runabove/metronome/src/metronome/models"
 )
 
@@ -21,7 +22,7 @@ type JobProducer struct {
 // NewJobProducer return a new job producer.
 // Read jobs to send from jobs channel.
 func NewJobProducer(jobs <-chan []models.Job) *JobProducer {
-	config := sarama.NewConfig()
+	config := kafka.NewConfig()
 	config.ClientID = "metronome-scheduler"
 	config.Producer.RequiredAcks = sarama.WaitForLocal
 	config.Producer.Timeout = 1 * time.Second

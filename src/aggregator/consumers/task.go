@@ -6,7 +6,7 @@ import (
 	saramaC "github.com/d33d33/sarama-cluster"
 	"github.com/spf13/viper"
 
-	"github.com/runabove/metronome/src/metronome/constants"
+	"github.com/runabove/metronome/src/metronome/kafka"
 	"github.com/runabove/metronome/src/metronome/models"
 	"github.com/runabove/metronome/src/metronome/pg"
 	"github.com/runabove/metronome/src/metronome/redis"
@@ -22,10 +22,11 @@ func NewTaskConsumer() (*TaskConsumer, error) {
 	brokers := viper.GetStringSlice("kafka.brokers")
 
 	config := saramaC.NewConfig()
+	config.Config = *kafka.NewConfig()
 	config.ClientID = "metronome-aggregator"
 	config.Consumer.Offsets.Initial = sarama.OffsetOldest
 
-	consumer, err := saramaC.NewConsumer(brokers, "aggregator", []string{constants.KafkaTopicTasks()}, config)
+	consumer, err := saramaC.NewConsumer(brokers, "aggregator", []string{kafka.TopicTasks()}, config)
 	if err != nil {
 		return nil, err
 	}

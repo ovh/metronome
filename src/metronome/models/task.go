@@ -10,8 +10,8 @@ import (
 
 	"github.com/Shopify/sarama"
 
-	"github.com/runabove/metronome/src/metronome/constants"
 	"github.com/runabove/metronome/src/metronome/core"
+	"github.com/runabove/metronome/src/metronome/kafka"
 )
 
 // Task holds task attributes.
@@ -35,7 +35,7 @@ func (t *Task) ToKafka() *sarama.ProducerMessage {
 	}
 
 	return &sarama.ProducerMessage{
-		Topic: constants.KafkaTopicTasks(),
+		Topic: kafka.TopicTasks(),
 		Key:   sarama.StringEncoder(t.GUID),
 		Value: sarama.StringEncoder(fmt.Sprintf("%v %v %v %v %v %v", t.UserID, t.ID, t.Schedule, t.URN, url.QueryEscape(t.Name), t.CreatedAt.Unix())),
 	}
