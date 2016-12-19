@@ -9,7 +9,7 @@ import (
 	saramaC "github.com/d33d33/sarama-cluster"
 	"github.com/spf13/viper"
 
-	"github.com/runabove/metronome/src/metronome/constants"
+	"github.com/runabove/metronome/src/metronome/kafka"
 	"github.com/runabove/metronome/src/metronome/models"
 )
 
@@ -27,6 +27,7 @@ func NewTaskComsumer() (*TaskConsumer, error) {
 	brokers := viper.GetStringSlice("kafka.brokers")
 
 	config := saramaC.NewConfig()
+	config.Config = *kafka.NewConfig()
 	config.ClientID = "metronome-scheduler"
 	config.Consumer.Offsets.Initial = sarama.OffsetOldest
 
@@ -35,7 +36,7 @@ func NewTaskComsumer() (*TaskConsumer, error) {
 		return nil, err
 	}
 
-	consumer, err := saramaC.NewConsumerFromClient(client, "schedulers", []string{constants.KafkaTopicTasks})
+	consumer, err := saramaC.NewConsumerFromClient(client, "schedulers", []string{kafka.TopicTasks()})
 	if err != nil {
 		return nil, err
 	}
@@ -118,7 +119,7 @@ func (tc *TaskConsumer) highWaterMarks() chan map[int32]int64 {
 
 	go func() {
 		for {
-			parts, err := tc.client.Partitions(constants.KafkaTopicTasks)
+			parts, err := tc.client.Partitions(kafka.TopicTasks())
 			if err != nil {
 				log.Warn("Can't get topic. Retry")
 				continue
@@ -126,7 +127,7 @@ func (tc *TaskConsumer) highWaterMarks() chan map[int32]int64 {
 
 			res := make(map[int32]int64)
 			for p := range parts {
-				i, err := tc.client.GetOffset(constants.KafkaTopicTasks, int32(p), sarama.OffsetNewest)
+				i, err := tc.client.GetOffset(kafka.TopicTasks(), int32(p), sarama.OffsetNewest)
 				if err != nil {
 					log.Panic(err)
 				}
@@ -145,7 +146,7 @@ func (tc *TaskConsumer) highWaterMarks() chan map[int32]int64 {
 
 // Check if consumer reach EOF on all the partitions
 func (tc *TaskConsumer) isDrained(hwm, offsets map[int32]int64) bool {
-	subs := tc.consumer.Subscriptions()[constants.KafkaTopicTasks]
+	subs := tc.consumer.Subscriptions()[kafka.TopicTasks()]
 
 	for partition := range subs {
 		part := int32(partition)

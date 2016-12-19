@@ -7,6 +7,8 @@ import (
 	"github.com/Shopify/sarama"
 	log "github.com/Sirupsen/logrus"
 	"github.com/spf13/viper"
+
+	"github.com/runabove/metronome/src/metronome/kafka"
 )
 
 // Kafka handle Kafka connection.
@@ -23,7 +25,7 @@ func GetKafka() *Kafka {
 	brokers := viper.GetStringSlice("kafka.brokers")
 
 	once.Do(func() {
-		config := sarama.NewConfig()
+		config := kafka.NewConfig()
 		config.ClientID = "metronome-api"
 		config.Producer.RequiredAcks = sarama.WaitForAll
 		config.Producer.Timeout = 1 * time.Second

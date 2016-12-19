@@ -11,7 +11,7 @@ import (
 	saramaC "github.com/d33d33/sarama-cluster"
 	"github.com/spf13/viper"
 
-	"github.com/runabove/metronome/src/metronome/constants"
+	"github.com/runabove/metronome/src/metronome/kafka"
 	"github.com/runabove/metronome/src/metronome/models"
 )
 
@@ -26,6 +26,7 @@ func NewJobConsumer() (*JobConsumer, error) {
 	brokers := viper.GetStringSlice("kafka.brokers")
 
 	config := saramaC.NewConfig()
+	config.Config = *kafka.NewConfig()
 	config.ClientID = "metronome-worker"
 	config.Producer.RequiredAcks = sarama.WaitForAll
 	config.Producer.Timeout = 1 * time.Second
@@ -35,7 +36,7 @@ func NewJobConsumer() (*JobConsumer, error) {
 	config.Producer.Return.Successes = true
 	config.Producer.Retry.Max = 3
 
-	consumer, err := saramaC.NewConsumer(brokers, "worker", []string{constants.KafkaTopicJobs}, config)
+	consumer, err := saramaC.NewConsumer(brokers, "worker", []string{kafka.TopicJobs()}, config)
 	if err != nil {
 		return nil, err
 	}
