@@ -21,6 +21,8 @@ func NewConfig() *sarama.Config {
 		config.Net.SASL.Password = viper.GetString("kafka.sasl.password")
 	}
 
+	config.Version = sarama.V0_10_0_1
+
 	return config
 }
 
@@ -40,4 +42,22 @@ func TopicJobs() string {
 func TopicStates() string {
 	viper.SetDefault("kafka.topics.states", "states")
 	return viper.GetString("kafka.topics.states")
+}
+
+// GroupSchedulers kafka consumer group used for schedulers
+func GroupSchedulers() string {
+	viper.SetDefault("kafka.groups.schedulers", "schedulers")
+	return viper.GetString("kafka.groups.schedulers")
+}
+
+// GroupAggregators kafka consumer group used for aggregators
+func GroupAggregators() string {
+	viper.SetDefault("kafka.groups.aggregators", "aggregators")
+	return viper.GetString("kafka.groups.aggregators")
+}
+
+// GroupWorkers kafka consumer group used for workers
+func GroupWorkers() string {
+	viper.SetDefault("kafka.groups.workers", "workers")
+	return viper.GetString("kafka.groups.workers")
 }

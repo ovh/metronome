@@ -25,7 +25,7 @@ func NewStateConsumer() (*StateConsumer, error) {
 	config.ClientID = "metronome-aggregator"
 	config.Consumer.Offsets.Initial = sarama.OffsetOldest
 
-	consumer, err := saramaC.NewConsumer(brokers, "aggregator", []string{kafka.TopicStates()}, config)
+	consumer, err := saramaC.NewConsumer(brokers, kafka.GroupAggregators(), []string{kafka.TopicStates()}, config)
 	if err != nil {
 		return nil, err
 	}

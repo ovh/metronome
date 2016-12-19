@@ -36,7 +36,7 @@ func NewTaskComsumer() (*TaskConsumer, error) {
 		return nil, err
 	}
 
-	consumer, err := saramaC.NewConsumerFromClient(client, "schedulers", []string{kafka.TopicTasks()})
+	consumer, err := saramaC.NewConsumerFromClient(client, kafka.GroupSchedulers(), []string{kafka.TopicTasks()})
 	if err != nil {
 		return nil, err
 	}
