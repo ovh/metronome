@@ -26,7 +26,7 @@ func NewTaskConsumer() (*TaskConsumer, error) {
 	config.ClientID = "metronome-aggregator"
 	config.Consumer.Offsets.Initial = sarama.OffsetOldest
 
-	consumer, err := saramaC.NewConsumer(brokers, "aggregator", []string{kafka.TopicTasks()}, config)
+	consumer, err := saramaC.NewConsumer(brokers, kafka.GroupAggregators(), []string{kafka.TopicTasks()}, config)
 	if err != nil {
 		return nil, err
 	}
