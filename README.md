@@ -5,6 +5,7 @@
 [![codecov](https://codecov.io/gh/runabove/metronome/branch/master/graph/badge.svg)](https://codecov.io/gh/runabove/metronome)
 [![Go Report Card](https://goreportcard.com/badge/github.com/runabove/metronome)](https://goreportcard.com/report/github.com/runabove/metronome)
 [![GoDoc](https://godoc.org/github.com/runabove/metronome?status.svg)](https://godoc.org/github.com/runabove/metronome)
+[![Join the chat at https://gitter.im/runabove-metronome/Lobby](https://badges.gitter.im/runabove-metronome/Lobby.svg)](https://gitter.im/runabove-metronome/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 Metronome is a distributed and fault-tolerant event scheduler. It can be used to trigger remote systems throught events (HTTP, AMQP, KAFKA).
 
