@@ -19,15 +19,15 @@ type batch struct {
 
 // TaskScheduler handle the internal states of the scheduler
 type TaskScheduler struct {
-	entries     map[string]*core.Entry
-	nextExec    *ring.Ring
-	plan        *ring.Ring
-	now         time.Time
-	jobs        chan []models.Job
-	stop        chan struct{}
-	planning    chan struct{}
-	dispatch    chan struct{}
-	nextTimer   *time.Timer
+	entries   map[string]*core.Entry
+	nextExec  *ring.Ring
+	plan      *ring.Ring
+	now       time.Time
+	jobs      chan []models.Job
+	stop      chan struct{}
+	planning  chan struct{}
+	dispatch  chan struct{}
+	nextTimer *time.Timer
 	jobProducer *JobProducer
 }
 
