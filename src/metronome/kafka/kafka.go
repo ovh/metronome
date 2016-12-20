@@ -1,14 +1,30 @@
 package kafka
 
 import (
+	"sync"
+
 	"github.com/Shopify/sarama"
 	"github.com/spf13/viper"
 )
 
+var onceKafkaDefaults sync.Once
+
+func setDefaults() {
+	onceKafkaDefaults.Do(func() {
+		viper.SetDefault("kafka.tls", false)
+		viper.SetDefault("kafka.topics.tasks", "tasks")
+		viper.SetDefault("kafka.topics.jobs", "jobs")
+		viper.SetDefault("kafka.topics.states", "states")
+		viper.SetDefault("kafka.groups.schedulers", "schedulers")
+		viper.SetDefault("kafka.groups.aggregators", "aggregators")
+		viper.SetDefault("kafka.groups.workers", "workers")
+	})
+}
+
 // NewConfig returns a new state sarama config.
 // Preset TLS and SASL config
 func NewConfig() *sarama.Config {
-	viper.SetDefault("kafka.tls", false)
+	setDefaults()
 
 	config := sarama.NewConfig()
 	if viper.GetBool("kafka.tls") {
@@ -28,36 +44,36 @@ func NewConfig() *sarama.Config {
 
 // TopicTasks kafka topic used for tasks
 func TopicTasks() string {
-	viper.SetDefault("kafka.topics.tasks", "tasks")
+	setDefaults()
 	return viper.GetString("kafka.topics.tasks")
 }
 
 // TopicJobs kafka topic used for jobs
 func TopicJobs() string {
-	viper.SetDefault("kafka.topics.jobs", "jobs")
+	setDefaults()
 	return viper.GetString("kafka.topics.jobs")
 }
 
 // TopicStates kafka topic used for states
 func TopicStates() string {
-	viper.SetDefault("kafka.topics.states", "states")
+	setDefaults()
 	return viper.GetString("kafka.topics.states")
 }
 
 // GroupSchedulers kafka consumer group used for schedulers
 func GroupSchedulers() string {
-	viper.SetDefault("kafka.groups.schedulers", "schedulers")
+	setDefaults()
 	return viper.GetString("kafka.groups.schedulers")
 }
 
 // GroupAggregators kafka consumer group used for aggregators
 func GroupAggregators() string {
-	viper.SetDefault("kafka.groups.aggregators", "aggregators")
+	setDefaults()
 	return viper.GetString("kafka.groups.aggregators")
 }
 
 // GroupWorkers kafka consumer group used for workers
 func GroupWorkers() string {
-	viper.SetDefault("kafka.groups.workers", "workers")
+	setDefaults()
 	return viper.GetString("kafka.groups.workers")
 }

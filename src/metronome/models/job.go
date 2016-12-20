@@ -1,6 +1,7 @@
 package models
 
 import (
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -12,11 +13,11 @@ import (
 
 // Job is a task execution.
 type Job struct {
-	GUID    string
-	UserID  string
-	At      int64
-	Epsilon int64
-	URN     string
+	GUID    string `json:"guid"`
+	UserID  string `json:"user_id"`
+	At      int64  `json:"at"`
+	Epsilon int64  `json:"epsilon"`
+	URN     string `json:"URN"`
 }
 
 // ToKafka serialize a Job to Kafka.
@@ -53,4 +54,14 @@ func (j *Job) FromKafka(msg *sarama.ConsumerMessage) error {
 	j.URN = segs[4]
 
 	return nil
+}
+
+// ToJSON serialize a Task as JSON.
+func (j *Job) ToJSON() string {
+	out, err := json.Marshal(j)
+	if err != nil {
+		panic(err)
+	}
+
+	return string(out)
 }
