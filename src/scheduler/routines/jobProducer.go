@@ -14,9 +14,11 @@ import (
 
 // JobProducer handle the internal states of the producer.
 type JobProducer struct {
-	producer sarama.AsyncProducer
-	wg       sync.WaitGroup
-	stopSig  chan struct{}
+	producer     sarama.AsyncProducer
+	wg           sync.WaitGroup
+	stopSig      chan struct{}
+	offsets      map[int32]int64
+	offsetsMutex sync.RWMutex
 }
 
 // NewJobProducer return a new job producer.
@@ -24,9 +26,9 @@ type JobProducer struct {
 func NewJobProducer(jobs <-chan []models.Job) *JobProducer {
 	config := kafka.NewConfig()
 	config.ClientID = "metronome-scheduler"
-	config.Producer.RequiredAcks = sarama.WaitForLocal
+	config.Producer.RequiredAcks = sarama.WaitForAll
 	config.Producer.Timeout = 1 * time.Second
-	config.Producer.Compression = sarama.CompressionGZIP
+	config.Producer.Compression = sarama.CompressionSnappy
 	config.Producer.Flush.Frequency = 300 * time.Millisecond
 	config.Producer.Return.Successes = true
 	config.Producer.Retry.Max = 3
@@ -41,6 +43,7 @@ func NewJobProducer(jobs <-chan []models.Job) *JobProducer {
 	jp := &JobProducer{
 		producer: producer,
 		stopSig:  make(chan struct{}),
+		offsets:  make(map[int32]int64),
 	}
 
 	go func() {
@@ -70,6 +73,9 @@ func NewJobProducer(jobs <-chan []models.Job) *JobProducer {
 					jp.wg.Done()
 					return
 				}
+				jp.offsetsMutex.Lock()
+				jp.offsets[msg.Partition] = msg.Offset
+				jp.offsetsMutex.Unlock()
 				log.Debugf("Msg send: %v", msg)
 			}
 		}
@@ -98,4 +104,18 @@ func (jp *JobProducer) Close() {
 	jp.stopSig <- struct{}{}
 	jp.producer.AsyncClose()
 	jp.wg.Wait()
+}
+
+// Indexes return the current write indexes by partition
+func (jp *JobProducer) Indexes() map[int32]int64 {
+	res := make(map[int32]int64)
+
+	jp.offsetsMutex.RLock()
+	defer jp.offsetsMutex.RUnlock()
+
+	for k, v := range jp.offsets {
+		res[k] = v
+	}
+
+	return res
 }
