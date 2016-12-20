@@ -19,15 +19,16 @@ type batch struct {
 
 // TaskScheduler handle the internal states of the scheduler
 type TaskScheduler struct {
-	entries   map[string]*core.Entry
-	nextExec  *ring.Ring
-	plan      *ring.Ring
-	now       time.Time
-	jobs      chan []models.Job
-	stop      chan struct{}
-	planning  chan struct{}
-	dispatch  chan struct{}
-	nextTimer *time.Timer
+	entries     map[string]*core.Entry
+	nextExec    *ring.Ring
+	plan        *ring.Ring
+	now         time.Time
+	jobs        chan []models.Job
+	stop        chan struct{}
+	planning    chan struct{}
+	dispatch    chan struct{}
+	nextTimer   *time.Timer
+	jobProducer *JobProducer
 }
 
 // NewTaskScheduler return a new task scheduler
@@ -48,6 +49,9 @@ func NewTaskScheduler(tasks <-chan models.Task) *TaskScheduler {
 		make(map[string][]models.Job),
 	}
 	ts.nextExec = ts.plan
+
+	// jobs producer
+	ts.jobProducer = NewJobProducer(ts.jobs)
 
 	go func() {
 		for {
@@ -80,7 +84,11 @@ func NewTaskScheduler(tasks <-chan models.Task) *TaskScheduler {
 				if ok {
 					ts.handlePlanning()
 				}
-			case t := <-tasks:
+			case t, ok := <-tasks:
+				if !ok {
+					// shutdown
+					ts.Stop()
+				}
 				ts.handleTask(t)
 			case <-ts.stop:
 				return
@@ -103,6 +111,8 @@ func (ts *TaskScheduler) Stop() {
 	close(ts.planning)
 	ts.nextTimer.Stop()
 	ts.stop <- struct{}{}
+
+	ts.jobProducer.Close()
 }
 
 // Jobs return the out jobs channel

@@ -84,27 +84,26 @@ Complete documentation is available at http://runabove.github.io/metronome`,
 			log.Fatal(err)
 		}
 
-		ts := routines.NewTaskScheduler(tc.Tasks())
-
-		tc.WaitForDrain()
-		log.Info("Tasks loaded")
-
-		jp := routines.NewJobProducer(ts.Jobs())
-		ts.Start()
-		log.Info("Started")
-
 		// Trap SIGINT to trigger a shutdown.
 		sigint := make(chan os.Signal, 1)
 		signal.Notify(sigint, os.Interrupt)
 
-		<-sigint
-		log.Info("Shuting down")
-		err = tc.Close()
-		ts.Stop()
-		jp.Close()
+	loop:
+		for {
+			select {
+			case tasks := <-tc.Tasks():
+				go func() {
+					log.Info("Start scheduler")
+					ts := routines.NewTaskScheduler(tasks)
 
-		if err != nil {
-			log.Fatal(err)
+					tc.WaitForDrain()
+					log.Info("Tasks loaded")
+					ts.Start()
+				}()
+			case <-sigint:
+				log.Info("Shuting down")
+				break loop
+			}
 		}
 	},
 }
