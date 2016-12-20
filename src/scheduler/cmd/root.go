@@ -3,6 +3,7 @@ package cmd
 import (
 	"os"
 	"os/signal"
+	"sync"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -20,6 +21,7 @@ func init() {
 	RootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file to use")
 	RootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "verbose output")
 	RootCmd.Flags().StringSlice("kafka.brokers", []string{"localhost:9092"}, "kafka brokers address")
+	RootCmd.Flags().String("redis.addr", "127.0.0.1:6379", "redis address")
 
 	viper.BindPFlags(RootCmd.Flags())
 }
@@ -88,22 +90,38 @@ Complete documentation is available at http://runabove.github.io/metronome`,
 		sigint := make(chan os.Signal, 1)
 		signal.Notify(sigint, os.Interrupt)
 
+		var schedulers sync.WaitGroup
+
+		running := true
+
 	loop:
 		for {
 			select {
-			case tasks := <-tc.Tasks():
+			case partition := <-tc.Partitons():
+				schedulers.Add(1)
 				go func() {
-					log.Info("Start scheduler")
-					ts := routines.NewTaskScheduler(tasks)
+					log.Infof("Scheduler start %v", partition.Partition)
+					ts := routines.NewTaskScheduler(partition.Partition, partition.Tasks)
 
 					tc.WaitForDrain()
-					log.Info("Tasks loaded")
-					ts.Start()
+					log.Infof("Scheduler tasks loaded %v", partition.Partition)
+					if running {
+						ts.Start()
+					}
+
+					ts.Halted()
+					log.Infof("Scheduler halted %v", partition.Partition)
+					schedulers.Done()
 				}()
 			case <-sigint:
 				log.Info("Shuting down")
+				running = false
 				break loop
 			}
 		}
+
+		tc.Close()
+		log.Infof("Consumer halted")
+		schedulers.Wait()
 	},
 }

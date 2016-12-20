@@ -13,6 +13,12 @@ import (
 	"github.com/runabove/metronome/src/metronome/models"
 )
 
+// Partition handle a topic partition
+type Partition struct {
+	Partition int32
+	Tasks     chan models.Task
+}
+
 // TaskConsumer handle the internal states of the consumer
 type TaskConsumer struct {
 	client   *saramaC.Client
@@ -20,9 +26,9 @@ type TaskConsumer struct {
 	drained  bool
 	drainWg  sync.WaitGroup
 	// group tasks by partition
-	partitions map[int]chan models.Task
-	tasks      chan chan models.Task
-	hwm        map[int32]int64
+	partitions     map[int32]chan models.Task
+	partitionsChan chan Partition
+	hwm            map[int32]int64
 }
 
 // NewTaskComsumer return a new task consumer
@@ -46,10 +52,10 @@ func NewTaskComsumer() (*TaskConsumer, error) {
 	}
 
 	tc := &TaskConsumer{
-		client:     client,
-		consumer:   consumer,
-		partitions: make(map[int]chan models.Task),
-		tasks:      make(chan chan models.Task),
+		client:         client,
+		consumer:       consumer,
+		partitions:     make(map[int32]chan models.Task),
+		partitionsChan: make(chan Partition),
 	}
 
 	tc.hwm = <-tc.highWaterMarks()
@@ -68,10 +74,15 @@ func NewTaskComsumer() (*TaskConsumer, error) {
 				if !ok { // shuting down
 					return
 				}
-				messages++
-				tc.handleMsg(msg)
 
-				offsets[msg.Partition] = msg.Offset
+				// skip if we have already processed this message
+				// hapenned at rebalance
+				if offsets[msg.Partition] < msg.Offset {
+					messages++
+					tc.handleMsg(msg)
+					offsets[msg.Partition] = msg.Offset
+				}
+
 				if !tc.drained && tc.isDrained(tc.hwm, offsets) {
 					ticker.Stop()
 					tc.drained = true
@@ -80,20 +91,22 @@ func NewTaskComsumer() (*TaskConsumer, error) {
 
 			case notif := <-consumer.Notifications():
 				log.Infof("Rebalance - claim %v, release %v", notif.Claimed[kafka.TopicTasks()], notif.Released[kafka.TopicTasks()])
-				for p := range notif.Released[kafka.TopicTasks()] {
+				for _, p := range notif.Released[kafka.TopicTasks()] {
 					if tc.partitions[p] != nil {
 						close(tc.partitions[p])
+						delete(tc.partitions, p)
+						offsets[p] = 0
 					}
 				}
-				for p := range notif.Claimed[kafka.TopicTasks()] {
-					tc.hwm = <-tc.highWaterMarks()
+				tc.hwm = <-tc.highWaterMarks()
+				for _, p := range notif.Claimed[kafka.TopicTasks()] {
 					if tc.drained {
 						tc.drained = false
 						tc.drainWg.Add(1)
 					}
 
 					tc.partitions[p] = make(chan models.Task)
-					tc.tasks <- tc.partitions[p]
+					tc.partitionsChan <- Partition{p, tc.partitions[p]}
 				}
 			case <-ticker.C:
 				log.WithField("count", messages).Debug("Loading tasks")
@@ -104,9 +117,9 @@ func NewTaskComsumer() (*TaskConsumer, error) {
 	return tc, nil
 }
 
-// Tasks return the incomming task channel
-func (tc *TaskConsumer) Tasks() <-chan chan models.Task {
-	return tc.tasks
+// Partitons return the incomming partition channel
+func (tc *TaskConsumer) Partitons() <-chan Partition {
+	return tc.partitionsChan
 }
 
 // WaitForDrain wait for consumer to EOF partitions
@@ -122,6 +135,12 @@ func (tc *TaskConsumer) Close() (err error) {
 	if e := tc.client.Close(); e != nil {
 		err = e
 	}
+	for _, p := range tc.partitions {
+		close(p)
+	}
+	if !tc.drained {
+		tc.drainWg.Done()
+	}
 	return
 }
 
@@ -133,7 +152,7 @@ func (tc *TaskConsumer) handleMsg(msg *sarama.ConsumerMessage) {
 		return
 	}
 	log.Debugf("Task received: %v partition %v", t.ToJSON(), msg.Partition)
-	tc.partitions[int(msg.Partition)] <- t
+	tc.partitions[msg.Partition] <- t
 }
 
 // Retrieve highWaterMarks for each partition

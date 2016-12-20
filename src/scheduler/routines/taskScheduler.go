@@ -2,12 +2,16 @@ package routines
 
 import (
 	"container/ring"
-	"fmt"
+	"encoding/json"
+	"strconv"
+	"sync"
 	"time"
 
 	log "github.com/Sirupsen/logrus"
+	redisV5 "gopkg.in/redis.v5"
 
 	"github.com/runabove/metronome/src/metronome/models"
+	"github.com/runabove/metronome/src/metronome/redis"
 	"github.com/runabove/metronome/src/scheduler/core"
 )
 
@@ -17,43 +21,54 @@ type batch struct {
 	jobs map[string][]models.Job
 }
 
+type state struct {
+	At      int64           `json:"at"`
+	Indexes map[int32]int64 `json:"indexes"`
+}
+
 // TaskScheduler handle the internal states of the scheduler
 type TaskScheduler struct {
-	entries     map[string]*core.Entry
-	nextExec    *ring.Ring
-	plan        *ring.Ring
-	now         time.Time
-	jobs        chan []models.Job
-	stop        chan struct{}
-	planning    chan struct{}
-	dispatch    chan struct{}
-	nextTimer   *time.Timer
-	jobProducer *JobProducer
+	entries      map[string]*core.Entry
+	nextExec     *ring.Ring
+	plan         *ring.Ring
+	now          time.Time
+	jobs         chan []models.Job
+	halt         chan struct{}
+	planning     chan struct{}
+	dispatch     chan struct{}
+	nextTimer    *time.Timer
+	jobProducer  *JobProducer
+	partition    int32
+	alive        sync.WaitGroup
+	entriesMutex sync.Mutex
 }
 
 // NewTaskScheduler return a new task scheduler
-func NewTaskScheduler(tasks <-chan models.Task) *TaskScheduler {
+func NewTaskScheduler(partition int32, tasks <-chan models.Task) *TaskScheduler {
 	const buffSize = 20
 
 	ts := &TaskScheduler{
-		plan:     ring.New(buffSize),
-		entries:  make(map[string]*core.Entry),
-		now:      time.Now().UTC(),
-		jobs:     make(chan []models.Job, buffSize),
-		stop:     make(chan struct{}),
-		planning: make(chan struct{}, 1),
-		dispatch: make(chan struct{}, 1),
+		plan:      ring.New(buffSize),
+		entries:   make(map[string]*core.Entry),
+		now:       time.Now().UTC(),
+		jobs:      make(chan []models.Job, buffSize),
+		halt:      make(chan struct{}),
+		planning:  make(chan struct{}, 1),
+		dispatch:  make(chan struct{}, 1),
+		partition: partition,
 	}
 	ts.plan.Value = batch{
 		ts.now,
 		make(map[string][]models.Job),
 	}
 	ts.nextExec = ts.plan
+	ts.alive.Add(1)
 
 	// jobs producer
 	ts.jobProducer = NewJobProducer(ts.jobs)
 
 	go func() {
+		defer ts.alive.Done()
 		for {
 			// dispatch first
 			select {
@@ -87,10 +102,13 @@ func NewTaskScheduler(tasks <-chan models.Task) *TaskScheduler {
 			case t, ok := <-tasks:
 				if !ok {
 					// shutdown
-					ts.Stop()
+					go ts.stop()
+					return
 				}
+				ts.entriesMutex.Lock()
 				ts.handleTask(t)
-			case <-ts.stop:
+				ts.entriesMutex.Unlock()
+			case <-ts.halt:
 				return
 			}
 		}
@@ -101,18 +119,88 @@ func NewTaskScheduler(tasks <-chan models.Task) *TaskScheduler {
 
 // Start task scheduling
 func (ts *TaskScheduler) Start() {
-	ts.planning <- struct{}{}
-	ts.dispatch <- struct{}{}
+	ts.entriesMutex.Lock()
+
+	defer func() {
+		ts.entriesMutex.Unlock()
+
+		ts.planning <- struct{}{}
+		ts.dispatch <- struct{}{}
+	}()
+
+	val, err := redis.DB().Get(strconv.Itoa(int(ts.partition))).Result()
+	if err == redisV5.Nil {
+		// no state save
+		return
+	} else if err != nil {
+		log.Error(err)
+		return
+	}
+
+	var state state
+	err = json.Unmarshal([]byte(val), &state)
+	if err != nil {
+		log.Error(err)
+		return
+	}
+
+	log.Warnf("state %v", state)
+
+	// Re-init from last know scheduler
+	for _, e := range ts.entries {
+		e.Init(time.Unix(state.At+1, 0))
+	}
+
+	// Look if we have already schedule some jobs
+	if len(state.Indexes) > 0 {
+
+		jobs := make(chan models.Job)
+		NewJobComsumer(state.Indexes, jobs)
+
+	jobsLoader:
+		for {
+			select {
+			case j, ok := <-jobs:
+				if !ok {
+					break jobsLoader
+				}
+				if ts.entries[j.GUID] == nil {
+					break
+				}
+				ts.entries[j.GUID].Init(time.Unix(j.At+1, 0))
+			}
+		}
+	}
+
+	// Plan
+	for guid, e := range ts.entries {
+		jobs := planEntryInBatch(e, ts.nextExec.Value.(batch).at)
+
+		if len(jobs) > 0 {
+			ts.nextExec.Value.(batch).jobs[guid] = jobs
+		}
+	}
 }
 
-// Stop the scheduler
-func (ts *TaskScheduler) Stop() {
+// stop the scheduler
+func (ts *TaskScheduler) stop() {
 	close(ts.dispatch)
 	close(ts.planning)
-	ts.nextTimer.Stop()
-	ts.stop <- struct{}{}
+	if ts.nextTimer != nil {
+		ts.nextTimer.Stop()
+	}
+	select {
+	case ts.halt <- struct{}{}:
+	default:
+	}
 
 	ts.jobProducer.Close()
+	ts.alive.Wait()
+}
+
+// Halted wait for scheduler to be halt
+func (ts *TaskScheduler) Halted() {
+	ts.alive.Wait()
 }
 
 // Jobs return the out jobs channel
@@ -123,7 +211,7 @@ func (ts *TaskScheduler) Jobs() <-chan []models.Job {
 // Handle incomming task
 func (ts *TaskScheduler) handleTask(t models.Task) {
 	if t.Schedule == "" {
-		log.Infof("DELETE task: %s", t.GUID)
+		log.Debugf("DELETE task: %s", t.GUID)
 		delete(ts.entries, t.GUID)
 		c := ts.nextExec
 		for i := 0; i < c.Len(); i++ {
@@ -141,7 +229,7 @@ func (ts *TaskScheduler) handleTask(t models.Task) {
 	if ts.entries[t.GUID] != nil {
 		taskUpdate = true
 		if ts.entries[t.GUID].SameAs(t) {
-			log.Infof("NOP task: %s", t.GUID)
+			log.Debugf("NOP task: %s", t.GUID)
 			return
 		}
 
@@ -156,9 +244,9 @@ func (ts *TaskScheduler) handleTask(t models.Task) {
 	}
 
 	if !taskUpdate {
-		log.Infof("NEW task: %s", t.GUID)
+		log.Debugf("NEW task: %s", t.GUID)
 	} else {
-		log.Infof("UPDATE task: %s", t.GUID)
+		log.Debugf("UPDATE task: %s", t.GUID)
 	}
 
 	// Update entries
@@ -188,9 +276,13 @@ func (ts *TaskScheduler) handleTask(t models.Task) {
 // Dispatch jobs executions
 func (ts *TaskScheduler) handleDispatch() {
 	now := time.Now().UTC().Unix()
+	at := int64(0)
+	send := 0
 	for ts.nextExec.Value != nil && ts.nextExec.Value.(batch).at.Unix() <= now {
+		at = ts.nextExec.Value.(batch).at.Unix()
 		var jobs []models.Job
 		for _, js := range ts.nextExec.Value.(batch).jobs {
+			send += len(js)
 			jobs = append(jobs, js...)
 		}
 		ts.jobs <- jobs
@@ -198,8 +290,25 @@ func (ts *TaskScheduler) handleDispatch() {
 		ts.nextExec = ts.nextExec.Next()
 	}
 
+	if at > 0 {
+		log.WithFields(log.Fields{
+			"at":       at,
+			"partiton": ts.partition,
+			"indexes":  ts.jobProducer.Indexes(),
+			"do":       send,
+		}).Info("Dispatch")
+		out, err := json.Marshal(state{at, ts.jobProducer.Indexes()})
+		if err != nil {
+			log.Error(err)
+		} else {
+			if err := redis.DB().Set(strconv.Itoa(int(ts.partition)), string(out), 0).Err(); err != nil {
+				log.Error(err)
+			}
+		}
+	}
+
 	if ts.nextExec.Value == nil {
-		// NOP sleep a bit before next exec
+		// NOP wait to be trig
 		time.AfterFunc(300*time.Millisecond, func() {
 			ts.dispatch <- struct{}{}
 		})
@@ -239,12 +348,9 @@ func (ts *TaskScheduler) handlePlanning() {
 		jobs := planEntryInBatch(ts.entries[k], ts.now)
 
 		if len(jobs) > 0 {
-			fmt.Printf("*")
 			ts.plan.Value.(batch).jobs[k] = jobs
 		}
 	}
-
-	fmt.Printf(".")
 
 	next := ts.plan.Next()
 	// Plan next batch if available

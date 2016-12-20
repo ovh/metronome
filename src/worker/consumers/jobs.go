@@ -30,7 +30,7 @@ func NewJobConsumer() (*JobConsumer, error) {
 	config.ClientID = "metronome-worker"
 	config.Producer.RequiredAcks = sarama.WaitForAll
 	config.Producer.Timeout = 1 * time.Second
-	config.Producer.Compression = sarama.CompressionGZIP
+	config.Producer.Compression = sarama.CompressionSnappy
 	config.Producer.Flush.Frequency = 500 * time.Millisecond
 	config.Producer.Partitioner = sarama.NewHashPartitioner
 	config.Producer.Return.Successes = true
