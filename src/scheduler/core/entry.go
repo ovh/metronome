@@ -192,6 +192,10 @@ func (e *Entry) Plan(now time.Time) bool {
 		return false
 	}
 
+	if e.next < 0 {
+		return false
+	}
+
 	if e.repeat >= 0 && e.planned > e.repeat {
 		e.next = -1
 		return false
