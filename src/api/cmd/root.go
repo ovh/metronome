@@ -11,6 +11,7 @@ import (
 
 	"github.com/runabove/metronome/src/api/core"
 	"github.com/runabove/metronome/src/api/routers"
+	"github.com/runabove/metronome/src/metronome/metrics"
 )
 
 var cfgFile string
@@ -27,6 +28,7 @@ func init() {
 	RootCmd.PersistentFlags().String("pg.database", "metronome", "postgres database")
 	RootCmd.Flags().StringSlice("kafka.brokers", []string{"localhost:9092"}, "kafka brokers address")
 	RootCmd.Flags().String("redis.addr", "127.0.0.1:6379", "redis address")
+	RootCmd.Flags().String("metrics.addr", "127.0.0.1:9100", "metrics address")
 
 	viper.BindPFlags(RootCmd.PersistentFlags())
 	viper.BindPFlags(RootCmd.Flags())
@@ -92,6 +94,8 @@ var RootCmd = &cobra.Command{
 Complete documentation is available at http://runabove.github.io/metronome`,
 	Run: func(cmd *cobra.Command, args []string) {
 		log.Info("Metronome API starting")
+
+		metrics.Serve()
 
 		n := negroni.New()
 

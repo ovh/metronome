@@ -8,6 +8,7 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/prometheus/client_golang/prometheus"
 	redisV5 "gopkg.in/redis.v5"
 
 	"github.com/runabove/metronome/src/metronome/models"
@@ -41,6 +42,9 @@ type TaskScheduler struct {
 	partition    int32
 	alive        sync.WaitGroup
 	entriesMutex sync.Mutex
+	// metrics
+	taskGauge   prometheus.Gauge
+	planCounter prometheus.Counter
 }
 
 // NewTaskScheduler return a new task scheduler
@@ -63,6 +67,24 @@ func NewTaskScheduler(partition int32, tasks <-chan models.Task) *TaskScheduler 
 	}
 	ts.nextExec = ts.plan
 	ts.alive.Add(1)
+
+	// metrics
+	ts.taskGauge = prometheus.NewGauge(prometheus.GaugeOpts{
+		Namespace:   "metronome",
+		Subsystem:   "scheduler",
+		Name:        "managed",
+		Help:        "Number of tasks managed.",
+		ConstLabels: prometheus.Labels{"partition": strconv.Itoa(int(ts.partition))},
+	})
+	prometheus.MustRegister(ts.taskGauge)
+	ts.planCounter = prometheus.NewCounter(prometheus.CounterOpts{
+		Namespace:   "metronome",
+		Subsystem:   "scheduler",
+		Name:        "plan",
+		Help:        "Number of tasks plan.",
+		ConstLabels: prometheus.Labels{"partition": strconv.Itoa(int(ts.partition))},
+	})
+	prometheus.MustRegister(ts.planCounter)
 
 	// jobs producer
 	ts.jobProducer = NewJobProducer(ts.jobs)
@@ -144,7 +166,7 @@ func (ts *TaskScheduler) Start() {
 		return
 	}
 
-	log.Warnf("state %v", state)
+	log.Infof("Scheduler %v restored state %v", ts.partition, state)
 
 	// Re-init from last know scheduler
 	for _, e := range ts.entries {
@@ -175,10 +197,7 @@ func (ts *TaskScheduler) Start() {
 	// Plan
 	for guid, e := range ts.entries {
 		jobs := planEntryInBatch(e, ts.nextExec.Value.(batch).at)
-
-		if len(jobs) > 0 {
-			ts.nextExec.Value.(batch).jobs[guid] = jobs
-		}
+		ts.nextExec.Value.(batch).jobs[guid] = jobs
 	}
 }
 
@@ -195,7 +214,6 @@ func (ts *TaskScheduler) stop() {
 	}
 
 	ts.jobProducer.Close()
-	ts.alive.Wait()
 }
 
 // Halted wait for scheduler to be halt
@@ -210,8 +228,9 @@ func (ts *TaskScheduler) Jobs() <-chan []models.Job {
 
 // Handle incomming task
 func (ts *TaskScheduler) handleTask(t models.Task) {
-	if t.Schedule == "" {
-		log.Debugf("DELETE task: %s", t.GUID)
+	if ts.entries[t.GUID] != nil && t.Schedule == "" {
+		log.Infof("DELETE task: %s", t.GUID)
+		ts.taskGauge.Dec()
 		delete(ts.entries, t.GUID)
 		c := ts.nextExec
 		for i := 0; i < c.Len(); i++ {
@@ -229,7 +248,7 @@ func (ts *TaskScheduler) handleTask(t models.Task) {
 	if ts.entries[t.GUID] != nil {
 		taskUpdate = true
 		if ts.entries[t.GUID].SameAs(t) {
-			log.Debugf("NOP task: %s", t.GUID)
+			log.Infof("NOP task: %s", t.GUID)
 			return
 		}
 
@@ -244,9 +263,10 @@ func (ts *TaskScheduler) handleTask(t models.Task) {
 	}
 
 	if !taskUpdate {
-		log.Debugf("NEW task: %s", t.GUID)
+		log.Infof("NEW task: %s", t.GUID)
+		ts.taskGauge.Inc()
 	} else {
-		log.Debugf("UPDATE task: %s", t.GUID)
+		log.Infof("UPDATE task: %s", t.GUID)
 	}
 
 	// Update entries
@@ -291,6 +311,7 @@ func (ts *TaskScheduler) handleDispatch() {
 	}
 
 	if at > 0 {
+		ts.planCounter.Add(float64(send))
 		log.WithFields(log.Fields{
 			"at":       at,
 			"partiton": ts.partition,

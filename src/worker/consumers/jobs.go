@@ -9,6 +9,7 @@ import (
 	"github.com/Shopify/sarama"
 	log "github.com/Sirupsen/logrus"
 	saramaC "github.com/d33d33/sarama-cluster"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/spf13/viper"
 
 	"github.com/runabove/metronome/src/metronome/kafka"
@@ -19,6 +20,11 @@ import (
 type JobConsumer struct {
 	consumer *saramaC.Consumer
 	producer sarama.SyncProducer
+	// metrics
+	jobCounter        *prometheus.CounterVec
+	jobTime           *prometheus.HistogramVec
+	jobSuccessCounter *prometheus.CounterVec
+	jobFailureCounter *prometheus.CounterVec
 }
 
 // NewJobConsumer returns a new job consumer.
@@ -47,9 +53,43 @@ func NewJobConsumer() (*JobConsumer, error) {
 	}
 
 	jc := &JobConsumer{
-		consumer,
-		producer,
+		consumer: consumer,
+		producer: producer,
 	}
+
+	// metrics
+	jc.jobCounter = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Namespace: "metronome",
+		Subsystem: "worker",
+		Name:      "jobs",
+		Help:      "Number of jobs processed.",
+	},
+		[]string{"partition"})
+	prometheus.MustRegister(jc.jobCounter)
+	jc.jobTime = prometheus.NewHistogramVec(prometheus.HistogramOpts{
+		Namespace: "metronome",
+		Subsystem: "worker",
+		Name:      "job_time",
+		Help:      "Job processing time.",
+	},
+		[]string{"partition"})
+	prometheus.MustRegister(jc.jobTime)
+	jc.jobSuccessCounter = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Namespace: "metronome",
+		Subsystem: "worker",
+		Name:      "jobs_success",
+		Help:      "Number of jobs success.",
+	},
+		[]string{"partition"})
+	prometheus.MustRegister(jc.jobSuccessCounter)
+	jc.jobFailureCounter = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Namespace: "metronome",
+		Subsystem: "worker",
+		Name:      "jobs_failure",
+		Help:      "Number of jobs failure.",
+	},
+		[]string{"partition"})
+	prometheus.MustRegister(jc.jobFailureCounter)
 
 	go func() {
 		for {
@@ -74,6 +114,7 @@ func (jc *JobConsumer) Close() error {
 // Handle message from Kafka.
 // Forward them as http POST.
 func (jc *JobConsumer) handleMsg(msg *sarama.ConsumerMessage) {
+	jc.jobCounter.WithLabelValues(strconv.Itoa(int(msg.Partition))).Inc()
 	var j models.Job
 	if err := j.FromKafka(msg); err != nil {
 		log.Error(err)
@@ -107,6 +148,8 @@ func (jc *JobConsumer) handleMsg(msg *sarama.ConsumerMessage) {
 		State:    models.Success,
 	}
 
+	jc.jobTime.WithLabelValues(strconv.Itoa(int(msg.Partition))).Observe(time.Since(start).Seconds()) // to seconds
+
 	if err != nil {
 		log.Warn(err)
 		s.State = models.Failed
@@ -115,6 +158,14 @@ func (jc *JobConsumer) handleMsg(msg *sarama.ConsumerMessage) {
 	}
 	if err == nil {
 		res.Body.Close()
+	}
+
+	switch s.State {
+	case models.Success:
+		jc.jobSuccessCounter.WithLabelValues(strconv.Itoa(int(msg.Partition))).Inc()
+	case models.Failed:
+		jc.jobFailureCounter.WithLabelValues(strconv.Itoa(int(msg.Partition))).Inc()
+
 	}
 
 	if _, _, err := jc.producer.SendMessage(s.ToKafka()); err != nil {

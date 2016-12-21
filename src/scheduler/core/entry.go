@@ -114,7 +114,6 @@ func (e *Entry) Init(now time.Time) {
 		return // e.next, true
 	}
 	e.next = e.initDateMode(now)
-
 }
 
 // initTimeMode compute first iteration for time period
@@ -133,9 +132,6 @@ func (e *Entry) initTimeMode(now time.Time) int64 {
 	}
 
 	next := start + int64(e.period)*int64(n)
-	for next <= e.next {
-		next += int64(e.period)
-	}
 
 	e.planned = (n + 1)
 	return next

@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
+	"github.com/runabove/metronome/src/metronome/metrics"
 	"github.com/runabove/metronome/src/scheduler/routines"
 )
 
@@ -22,6 +23,7 @@ func init() {
 	RootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "verbose output")
 	RootCmd.Flags().StringSlice("kafka.brokers", []string{"localhost:9092"}, "kafka brokers address")
 	RootCmd.Flags().String("redis.addr", "127.0.0.1:6379", "redis address")
+	RootCmd.Flags().String("metrics.addr", "127.0.0.1:9100", "metrics address")
 
 	viper.BindPFlags(RootCmd.Flags())
 }
@@ -80,6 +82,8 @@ Complete documentation is available at http://runabove.github.io/metronome`,
 	Run: func(cmd *cobra.Command, args []string) {
 		log.Info("Metronome Scheduler starting")
 
+		metrics.Serve()
+
 		log.Info("Loading tasks")
 		tc, err := routines.NewTaskComsumer()
 		if err != nil {
@@ -107,6 +111,7 @@ Complete documentation is available at http://runabove.github.io/metronome`,
 					log.Infof("Scheduler tasks loaded %v", partition.Partition)
 					if running {
 						ts.Start()
+						log.Infof("Scheduler started %v", partition.Partition)
 					}
 
 					ts.Halted()
