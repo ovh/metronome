@@ -10,7 +10,7 @@ import (
 )
 
 // NewJobComsumer return a new job consumer
-func NewJobComsumer(offsets map[int32]int64, jobs chan models.Job) {
+func NewJobComsumer(offsets map[int32]int64, jobs chan models.Job) error {
 	brokers := viper.GetStringSlice("kafka.brokers")
 
 	config := kafka.NewConfig()
@@ -18,67 +18,67 @@ func NewJobComsumer(offsets map[int32]int64, jobs chan models.Job) {
 
 	client, err := sarama.NewClient(brokers, config)
 	if err != nil {
-		log.Error(err)
-		return
+		return err
 	}
 
 	consumer, err := sarama.NewConsumerFromClient(client)
 	if err != nil {
-		log.Error(err)
-		return
+		return err
 	}
 
 	parts, err := client.Partitions(kafka.TopicJobs())
 	if err != nil {
-		log.Error(err)
-		return
+		return err
 	}
 
 	hwm := make(map[int32]int64)
 	for p := range parts {
 		i, err := client.GetOffset(kafka.TopicJobs(), int32(p), sarama.OffsetNewest)
 		if err != nil {
-			log.Error(err)
-			return
+			return err
 		}
 
 		hwm[int32(p)] = i
 	}
 
-	for part, offset := range offsets {
-		if (offset + 1) >= hwm[part] {
-			// already to the end
-			continue
-		}
+	go func() {
+		for part, offset := range offsets {
+			if (offset + 1) >= hwm[part] {
+				// already to the end
+				continue
+			}
 
-		pc, err := consumer.ConsumePartition(kafka.TopicJobs(), part, offset)
-		if err != nil {
-			log.Error(err)
-			continue
-		}
+			pc, err := consumer.ConsumePartition(kafka.TopicJobs(), part, offset)
+			if err != nil {
+				log.Error(err)
+				continue
+			}
 
-	consume:
-		for {
-			select {
-			case msg := <-pc.Messages():
-				var j models.Job
-				if err := j.FromKafka(msg); err != nil {
-					log.Error(err)
-					continue
+		consume:
+			for {
+				select {
+				case msg := <-pc.Messages():
+					var j models.Job
+					if err := j.FromKafka(msg); err != nil {
+						log.Error(err)
+						continue
+					}
+					log.Debugf("Job received: %v", j.ToJSON())
+					jobs <- j
+
+					if (msg.Offset + 1) >= hwm[part] {
+						break consume
+					}
 				}
-				log.Debugf("Job received: %v", j.ToJSON())
-				jobs <- j
+			}
 
-				if (msg.Offset + 1) >= hwm[part] {
-					break consume
-				}
+			if err := pc.Close(); err != nil {
+				log.Error(err)
 			}
 		}
 
-		if err := pc.Close(); err != nil {
-			log.Error(err)
-		}
-	}
+		close(jobs)
+	}()
 
-	close(jobs)
+	return nil
 }
