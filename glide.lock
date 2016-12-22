@@ -1,6 +1,10 @@
-hash: a0e22267859c828f70efa09a0c7091e15388fcede4c447275dc21536a1e35a34
-updated: 2016-12-19T17:51:55.886133388-05:00
+hash: ff80a845e9359bc8f0b0d628c74bcf471a7882a7a9834b97339c2b357aa147ce
+updated: 2016-12-21T04:03:36.51050798-05:00
 imports:
+- name: github.com/beorn7/perks
+  version: 4c0e84591b9aa9e6dcfdf3e020114cd81f89d5f9
+  subpackages:
+  - quantile
 - name: github.com/d33d33/sarama-cluster
   version: 7f63f9e1f4c350d3b180261e3818e0b97e9ef6cc
 - name: github.com/davecgh/go-spew
@@ -19,6 +23,10 @@ imports:
   version: 44cc805cf13205b55f69e14bcb69867d1ae92f98
 - name: github.com/fsnotify/fsnotify
   version: fd9ec7deca8bf46ecd2a795baaacf2b3a9be1197
+- name: github.com/golang/protobuf
+  version: 8ee79997227bf9b34611aee7946ae64735e6fd93
+  subpackages:
+  - proto
 - name: github.com/golang/snappy
   version: d9eb7a3d35ec988b8585d4a0068e462c27d28380
 - name: github.com/gorilla/context
@@ -46,6 +54,10 @@ imports:
   version: cb6bfca970f6908083f26f39a79009d608efd5cd
 - name: github.com/magiconair/properties
   version: 9c47895dc1ce54302908ab8a43385d1f5df2c11c
+- name: github.com/matttproud/golang_protobuf_extensions
+  version: c12348ce28de40eed0136aa2b644d0ee0650e56c
+  subpackages:
+  - pbutil
 - name: github.com/mitchellh/mapstructure
   version: 5a0325d7fafaac12dda6e7fb8bd222ec1b69875e
 - name: github.com/pelletier/go-buffruneio
@@ -58,6 +70,23 @@ imports:
   version: f051bb7f1d1aaf1b5a665d74fb6b0217712c69f7
   subpackages:
   - xxHash32
+- name: github.com/prometheus/client_golang
+  version: c5b7fccd204277076155f10851dad72b76a49317
+  subpackages:
+  - prometheus
+  - prometheus/promhttp
+- name: github.com/prometheus/client_model
+  version: fa8ad6fec33561be4280a8f0514318c79d7f6cb6
+  subpackages:
+  - go
+- name: github.com/prometheus/common
+  version: 6d76b79f239843a04e8ad8dfd8fcadfa3920236f
+  subpackages:
+  - expfmt
+  - internal/bitbucket.org/ww/goautoneg
+  - model
+- name: github.com/prometheus/procfs
+  version: fcdb11ccb4389efb1b210b7ffb623ab71c5fdd60
 - name: github.com/rcrowley/go-metrics
   version: 1f30fe9094a513ce4c700b9a54458bbb0c96996c
 - name: github.com/rs/cors

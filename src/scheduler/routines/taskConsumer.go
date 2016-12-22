@@ -1,12 +1,14 @@
 package routines
 
 import (
+	"strconv"
 	"sync"
 	"time"
 
 	"github.com/Shopify/sarama"
 	log "github.com/Sirupsen/logrus"
 	saramaC "github.com/d33d33/sarama-cluster"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/spf13/viper"
 
 	"github.com/runabove/metronome/src/metronome/kafka"
@@ -29,6 +31,9 @@ type TaskConsumer struct {
 	partitions     map[int32]chan models.Task
 	partitionsChan chan Partition
 	hwm            map[int32]int64
+	// metrics
+	taskCounter              *prometheus.CounterVec
+	taskUnprocessableCounter *prometheus.CounterVec
 }
 
 // NewTaskComsumer return a new task consumer
@@ -57,6 +62,21 @@ func NewTaskComsumer() (*TaskConsumer, error) {
 		partitions:     make(map[int32]chan models.Task),
 		partitionsChan: make(chan Partition),
 	}
+	tc.taskCounter = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Namespace: "metronome",
+		Subsystem: "scheduler",
+		Name:      "tasks",
+		Help:      "Number of tasks processed.",
+	},
+		[]string{"partition"})
+	prometheus.MustRegister(tc.taskCounter)
+	tc.taskUnprocessableCounter = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Namespace: "metronome",
+		Subsystem: "scheduler",
+		Name:      "tasks_unprocessable",
+		Help:      "Number of unprocessable tasks.",
+	},
+		[]string{"partition"})
 
 	tc.hwm = <-tc.highWaterMarks()
 	offsets := make(map[int32]int64)
@@ -146,8 +166,10 @@ func (tc *TaskConsumer) Close() (err error) {
 
 // Handle incomming messages
 func (tc *TaskConsumer) handleMsg(msg *sarama.ConsumerMessage) {
+	tc.taskCounter.WithLabelValues(strconv.Itoa(int(msg.Partition))).Inc()
 	var t models.Task
 	if err := t.FromKafka(msg); err != nil {
+		tc.taskUnprocessableCounter.WithLabelValues(strconv.Itoa(int(msg.Partition))).Inc()
 		log.Error(err)
 		return
 	}

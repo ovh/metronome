@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
+	"github.com/runabove/metronome/src/metronome/metrics"
 	"github.com/runabove/metronome/src/worker/consumers"
 )
 
@@ -20,6 +21,7 @@ func init() {
 	RootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file to use")
 	RootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "verbose output")
 	RootCmd.Flags().StringSlice("kafka.brokers", []string{"localhost:9092"}, "kafka brokers address")
+	RootCmd.Flags().String("metrics.addr", "127.0.0.1:9100", "metrics address")
 
 	viper.BindPFlags(RootCmd.Flags())
 }
@@ -77,6 +79,8 @@ var RootCmd = &cobra.Command{
 Complete documentation is available at http://runabove.github.io/metronome`,
 	Run: func(cmd *cobra.Command, args []string) {
 		log.Info("Metronome Worker starting")
+
+		metrics.Serve()
 
 		jc, err := consumers.NewJobConsumer()
 		if err != nil {

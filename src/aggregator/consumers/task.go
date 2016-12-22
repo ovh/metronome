@@ -1,9 +1,12 @@
 package consumers
 
 import (
+	"strconv"
+
 	"github.com/Shopify/sarama"
 	log "github.com/Sirupsen/logrus"
 	saramaC "github.com/d33d33/sarama-cluster"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/spf13/viper"
 
 	"github.com/runabove/metronome/src/metronome/kafka"
@@ -14,7 +17,11 @@ import (
 
 // TaskConsumer consumed tasks messages from a Kafka topic to maintain the tasks database.
 type TaskConsumer struct {
-	consumer *saramaC.Consumer
+	consumer                 *saramaC.Consumer
+	taskCounter              *prometheus.CounterVec
+	taskUnprocessableCounter *prometheus.CounterVec
+	taskProcessedCounter     *prometheus.CounterVec
+	taskPublishErrorCounter  *prometheus.CounterVec
 }
 
 // NewTaskConsumer returns a new task consumer.
@@ -34,6 +41,40 @@ func NewTaskConsumer() (*TaskConsumer, error) {
 	tc := &TaskConsumer{
 		consumer: consumer,
 	}
+
+	// metrics
+	tc.taskCounter = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Namespace: "metronome",
+		Subsystem: "aggregator",
+		Name:      "tasks",
+		Help:      "Number of tasks processed.",
+	},
+		[]string{"partition"})
+	prometheus.MustRegister(tc.taskCounter)
+	tc.taskUnprocessableCounter = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Namespace: "metronome",
+		Subsystem: "aggregator",
+		Name:      "tasks_unprocessable",
+		Help:      "Number of unprocessable tasks.",
+	},
+		[]string{"partition"})
+	prometheus.MustRegister(tc.taskUnprocessableCounter)
+	tc.taskProcessedCounter = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Namespace: "metronome",
+		Subsystem: "aggregator",
+		Name:      "tasks_processeed",
+		Help:      "Number of processeed tasks.",
+	},
+		[]string{"partition"})
+	prometheus.MustRegister(tc.taskProcessedCounter)
+	tc.taskPublishErrorCounter = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Namespace: "metronome",
+		Subsystem: "aggregator",
+		Name:      "tasks_publish_error",
+		Help:      "Number of tasks publish error.",
+	},
+		[]string{"partition"})
+	prometheus.MustRegister(tc.taskPublishErrorCounter)
 
 	go func() {
 		for {
@@ -58,8 +99,10 @@ func (tc *TaskConsumer) Close() error {
 // Handle message from Kafka.
 // Apply updates to the database.
 func (tc *TaskConsumer) handleMsg(msg *sarama.ConsumerMessage) {
+	tc.taskCounter.WithLabelValues(strconv.Itoa(int(msg.Partition))).Inc()
 	var t models.Task
 	if err := t.FromKafka(msg); err != nil {
+		tc.taskUnprocessableCounter.WithLabelValues(strconv.Itoa(int(msg.Partition))).Inc()
 		log.Error(err)
 		return
 	}
@@ -71,17 +114,20 @@ func (tc *TaskConsumer) handleMsg(msg *sarama.ConsumerMessage) {
 
 		_, err := db.Model(&t).Delete()
 		if err != nil {
-			log.Errorf("%v", err) // TODO log for replay or not commit
+			log.Errorf("%v", err)
 		}
-		return
-	}
-	log.Infof("UPDATE task: %s", t.GUID)
+	} else {
+		log.Infof("UPSERT task: %s", t.GUID)
 
-	_, err := db.Model(&t).OnConflict("(guid) DO UPDATE").Set("name = ?name").Set("urn = ?urn").Set("schedule = ?schedule").Insert()
-	if err != nil {
-		log.Errorf("%v", err) // TODO log for replay or not commit
+		_, err := db.Model(&t).OnConflict("(guid) DO UPDATE").Set("name = ?name").Set("urn = ?urn").Set("schedule = ?schedule").Insert()
+		if err != nil {
+			log.Errorf("%v", err)
+		}
 	}
+	tc.taskProcessedCounter.WithLabelValues(strconv.Itoa(int(msg.Partition))).Inc()
+
 	if err := redis.DB().PublishTopic(t.UserID, "task", t.ToJSON()).Err(); err != nil {
+		tc.taskPublishErrorCounter.WithLabelValues(strconv.Itoa(int(msg.Partition))).Inc()
 		log.Error(err)
 	}
 }

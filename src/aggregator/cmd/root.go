@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/runabove/metronome/src/aggregator/consumers"
+	"github.com/runabove/metronome/src/metronome/metrics"
 )
 
 var cfgFile string
@@ -25,6 +26,7 @@ func init() {
 	RootCmd.Flags().String("pg.database", "metronome", "postgres database")
 	RootCmd.Flags().StringSlice("kafka.brokers", []string{"localhost:9092"}, "kafka brokers address")
 	RootCmd.Flags().String("redis.addr", "127.0.0.1:6379", "redis address")
+	RootCmd.Flags().String("metrics.addr", "127.0.0.1:9100", "metrics address")
 
 	viper.BindPFlags(RootCmd.Flags())
 }
@@ -82,6 +84,8 @@ var RootCmd = &cobra.Command{
 Complete documentation is available at http://runabove.github.io/metronome`,
 	Run: func(cmd *cobra.Command, args []string) {
 		log.Info("Metronome Aggregator starting")
+
+		metrics.Serve()
 
 		tc, err := consumers.NewTaskConsumer()
 		if err != nil {
