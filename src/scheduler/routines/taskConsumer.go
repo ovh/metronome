@@ -100,6 +100,13 @@ func NewTaskComsumer() (*TaskConsumer, error) {
 					return
 				}
 
+				// Fix a buggy behaviour of sarama. Sarama could send Messages before Notifications
+				// aka: received message before knowing our assigned partitions
+				if tc.partitions[msg.Partition] == nil {
+					tc.partitions[msg.Partition] = make(chan models.Task)
+					tc.partitionsChan <- Partition{msg.Partition, tc.partitions[msg.Partition]}
+				}
+
 				// skip if we have already processed this message
 				// hapenned at rebalance
 				if offsets[msg.Partition] < msg.Offset {
