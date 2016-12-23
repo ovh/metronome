@@ -82,6 +82,11 @@ func NewTaskComsumer() (*TaskConsumer, error) {
 	offsets := make(map[int32]int64)
 	messages := 0
 
+	// init offsets
+	for p := range tc.hwm {
+		offsets[p] = -1
+	}
+
 	tc.drainWg.Add(1)
 
 	// Progress display
@@ -93,6 +98,13 @@ func NewTaskComsumer() (*TaskConsumer, error) {
 			case msg, ok := <-consumer.Messages():
 				if !ok { // shuting down
 					return
+				}
+
+				// Fix a buggy behaviour of sarama. Sarama could send Messages before Notifications
+				// aka: received message before knowing our assigned partitions
+				if tc.partitions[msg.Partition] == nil {
+					tc.partitions[msg.Partition] = make(chan models.Task)
+					tc.partitionsChan <- Partition{msg.Partition, tc.partitions[msg.Partition]}
 				}
 
 				// skip if we have already processed this message
