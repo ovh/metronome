@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/Shopify/sarama"
@@ -20,6 +21,7 @@ import (
 type JobConsumer struct {
 	consumer *saramaC.Consumer
 	producer sarama.SyncProducer
+	wg       *sync.WaitGroup // Used to sync shut down
 	// metrics
 	jobCounter        *prometheus.CounterVec
 	jobTime           *prometheus.HistogramVec
@@ -57,6 +59,9 @@ func NewJobConsumer() (*JobConsumer, error) {
 		producer: producer,
 	}
 
+	// worker
+	jc.wg = new(sync.WaitGroup)
+
 	// metrics
 	jc.jobCounter = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Namespace: "metronome",
@@ -91,24 +96,37 @@ func NewJobConsumer() (*JobConsumer, error) {
 		[]string{"partition"})
 	prometheus.MustRegister(jc.jobFailureCounter)
 
-	go func() {
-		for {
-			select {
-			case msg, ok := <-consumer.Messages():
-				if !ok { // shuting down
-					return
-				}
-				jc.handleMsg(msg)
-			}
-		}
-	}()
+	// Spawning workers
+	poolSize := viper.GetInt("worker.poolsize")
 
+	log.Printf("Spawning %d goroutines...", poolSize)
+	for i := 0; i < poolSize; i++ {
+		jc.wg.Add(1)
+		go jc.Worker(i + 1)
+	}
 	return jc, nil
 }
 
 // Close the consumer.
 func (jc *JobConsumer) Close() error {
-	return jc.consumer.Close()
+	err := jc.consumer.Close()
+	jc.wg.Wait() // wait for all workers to shut down properly
+	return err
+}
+
+// Worker is the main goroutine that is calling handleMsg
+func (jc *JobConsumer) Worker(id int) {
+	defer jc.wg.Done()
+	for {
+		select {
+		case msg, ok := <-jc.consumer.Messages():
+			if !ok { // shutting down
+				log.Printf("Closing worker %d", id)
+				return
+			}
+			jc.handleMsg(msg)
+		}
+	}
 }
 
 // Handle message from Kafka.

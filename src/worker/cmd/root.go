@@ -32,6 +32,9 @@ func initConfig() {
 		log.SetLevel(log.DebugLevel)
 	}
 
+	// Defaults
+	viper.SetDefault("worker.poolsize", 100)
+
 	// Bind environment variables
 	viper.SetEnvPrefix("mtrwrk")
 	viper.AutomaticEnv()
