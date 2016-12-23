@@ -82,6 +82,11 @@ func NewTaskComsumer() (*TaskConsumer, error) {
 	offsets := make(map[int32]int64)
 	messages := 0
 
+	// init offsets
+	for p := range tc.hwm {
+		offsets[p] = -1
+	}
+
 	tc.drainWg.Add(1)
 
 	// Progress display
