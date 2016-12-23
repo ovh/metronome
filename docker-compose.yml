@@ -54,7 +54,7 @@ services:
     links:
       - kafka
     build: .
-    command: ./wait-for-it.sh kafka:9092 -- metronome-scheduler --kafka.brokers=kafka:9092
+    command: ./wait-for-it.sh kafka:9092 -- metronome-scheduler --kafka.brokers=kafka:9092 --redis.addr=redis:6379
   aggregator:
     links:
       - postgres
