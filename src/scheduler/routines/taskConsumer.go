@@ -137,8 +137,10 @@ func NewTaskComsumer() (*TaskConsumer, error) {
 						tc.drainWg.Add(1)
 					}
 
-					tc.partitions[p] = make(chan models.Task)
-					tc.partitionsChan <- Partition{p, tc.partitions[p]}
+					if tc.partitions[p] == nil {
+						tc.partitions[p] = make(chan models.Task)
+						tc.partitionsChan <- Partition{p, tc.partitions[p]}
+					}
 				}
 			case <-ticker.C:
 				log.WithField("count", messages).Debug("Loading tasks")
