@@ -27,6 +27,7 @@ type JobConsumer struct {
 	jobTime           *prometheus.HistogramVec
 	jobSuccessCounter *prometheus.CounterVec
 	jobFailureCounter *prometheus.CounterVec
+	jobExpireCounter  *prometheus.CounterVec
 }
 
 // NewJobConsumer returns a new job consumer.
@@ -95,6 +96,14 @@ func NewJobConsumer() (*JobConsumer, error) {
 	},
 		[]string{"partition"})
 	prometheus.MustRegister(jc.jobFailureCounter)
+	jc.jobExpireCounter = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Namespace: "metronome",
+		Subsystem: "worker",
+		Name:      "jobs_expire",
+		Help:      "Number of expired jobs.",
+	},
+		[]string{"partition"})
+	prometheus.MustRegister(jc.jobExpireCounter)
 
 	// Spawning workers
 	poolSize := viper.GetInt("worker.poolsize")
@@ -141,12 +150,6 @@ func (jc *JobConsumer) handleMsg(msg *sarama.ConsumerMessage) {
 
 	start := time.Now()
 
-	v := url.Values{}
-	v.Set("time", strconv.FormatInt(j.At, 10))
-	v.Set("epsilon", strconv.FormatInt(j.Epsilon, 10))
-	v.Set("urn", j.URN)
-	v.Set("at", strconv.FormatInt(time.Now().Unix(), 10))
-
 	log.WithFields(log.Fields{
 		"time":    j.At,
 		"epsilon": j.Epsilon,
@@ -154,7 +157,6 @@ func (jc *JobConsumer) handleMsg(msg *sarama.ConsumerMessage) {
 		"at":      start,
 	}).Debug("POST")
 
-	res, err := http.PostForm(j.URN, v)
 	s := models.State{
 		ID:       "",
 		TaskGUID: j.GUID,
@@ -166,24 +168,36 @@ func (jc *JobConsumer) handleMsg(msg *sarama.ConsumerMessage) {
 		State:    models.Success,
 	}
 
-	jc.jobTime.WithLabelValues(strconv.Itoa(int(msg.Partition))).Observe(time.Since(start).Seconds()) // to seconds
+	if j.At < start.Unix()-j.Epsilon {
+		s.State = models.Expired
+	} else {
+		v := url.Values{}
+		v.Set("time", strconv.FormatInt(j.At, 10))
+		v.Set("epsilon", strconv.FormatInt(j.Epsilon, 10))
+		v.Set("urn", j.URN)
+		v.Set("at", strconv.FormatInt(time.Now().Unix(), 10))
 
-	if err != nil {
-		log.Warn(err)
-		s.State = models.Failed
-	} else if res.StatusCode < 200 || res.StatusCode >= 300 {
-		s.State = models.Failed
+		res, err := http.PostForm(j.URN, v)
+		if err != nil {
+			log.Warn(err)
+			s.State = models.Failed
+		} else if res.StatusCode < 200 || res.StatusCode >= 300 {
+			s.State = models.Failed
+		}
+		if err == nil {
+			res.Body.Close()
+		}
 	}
-	if err == nil {
-		res.Body.Close()
-	}
+
+	jc.jobTime.WithLabelValues(strconv.Itoa(int(msg.Partition))).Observe(time.Since(start).Seconds()) // to seconds
 
 	switch s.State {
 	case models.Success:
 		jc.jobSuccessCounter.WithLabelValues(strconv.Itoa(int(msg.Partition))).Inc()
 	case models.Failed:
 		jc.jobFailureCounter.WithLabelValues(strconv.Itoa(int(msg.Partition))).Inc()
-
+	case models.Expired:
+		jc.jobExpireCounter.WithLabelValues(strconv.Itoa(int(msg.Partition))).Inc()
 	}
 
 	if _, _, err := jc.producer.SendMessage(s.ToKafka()); err != nil {
