@@ -2,6 +2,7 @@
 // sources:
 // src/metronome/pg/schema/extensions.sql
 // src/metronome/pg/schema/tasks.sql
+// src/metronome/pg/schema/tokens.sql
 // src/metronome/pg/schema/users.sql
 // DO NOT EDIT!
 
@@ -85,7 +86,7 @@ func extensionsSQL() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "extensions.sql", size: 44, mode: os.FileMode(420), modTime: time.Unix(1482169989, 0)}
+	info := bindataFileInfo{name: "extensions.sql", size: 44, mode: os.FileMode(420), modTime: time.Unix(1482487794, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -105,7 +106,27 @@ func tasksSQL() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "tasks.sql", size: 436, mode: os.FileMode(420), modTime: time.Unix(1481629001, 0)}
+	info := bindataFileInfo{name: "tasks.sql", size: 436, mode: os.FileMode(420), modTime: time.Unix(1481895434, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _tokensSQL = []byte("\x1f\x8b\x08\x00\x00\x09\x6e\x88\x00\xff\x6c\x91\xc1\x6e\xa3\x30\x10\x86\xef\x3c\xc5\x7f\x04\x69\x4f\x2b\xed\x5e\x72\xf2\xc2\x90\xb5\x4a\x0c\x05\x23\x25\x27\x44\x82\x93\xd0\x24\x80\x8c\x69\x92\x3e\x7d\x15\x83\xd2\x36\x2d\x17\xec\xff\xfb\x66\xa4\xf1\xf8\x29\x31\x49\x90\xec\x5f\x44\xe0\x21\x44\x2c\x41\x4b\x9e\xc9\x0c\xa6\x3d\xa8\xa6\x77\x5c\x07\xc0\x78\x81\x51\x17\x63\x15\x91\x47\xd1\x2f\x0b\x86\x5e\xe9\xa2\xae\x30\x0c\x75\xf5\x80\xcc\xb5\x53\xd8\xec\x4b\x5d\x6e\x8c\xd2\x78\x2d\xf5\xb5\x6e\x76\xee\xef\x3f\x7f\xbd\x07\x73\xa3\x55\x69\x54\x55\x94\x06\xa6\x3e\xa9\xde\x94\xa7\x0e\xe7\xda\xec\xdb\x61\x4c\xf0\xd6\x36\xea\x5e\x84\x80\x42\x96\x47\x12\x4d\x7b\x76\xbd\xb1\x85\x6e\x8f\xaa\xc7\x4b\xdf\x36\xeb\x31\xf0\x63\x91\xc9\x94\x71\x21\xa7\x49\x8a\xee\xa0\xae\x48\x52\xbe\x60\xe9\x0a\x4f\xb4\x82\x6b\x81\xf7\xcd\x9f\x66\x2a\xb6\x07\x84\x71\x4a\x7c\x2e\x46\x7d\xca\x3d\xeb\xdf\xbe\x94\x42\x4a\x49\xf8\x94\xd9\x9a\xfe\x43\xc1\x82\x49\xff\x3f\x32\xbe\x48\x22\xba\xfb\xb1\x40\x9e\x04\xb7\x07\x17\x31\x98\x2f\x79\x2c\x3e\xb3\x80\x22\xfa\xc2\xbc\x99\x33\x2d\x28\x17\xfc\x39\x27\x70\x11\xd0\xf2\xc7\x3d\x15\xf6\x57\xd4\xd5\xc5\x99\xba\x8d\x39\xf2\x8c\x8b\x39\xd6\x46\x2b\x65\xc9\x34\xb4\x3d\xdb\xb5\x67\x09\xf3\x09\xdd\xae\xa8\xd4\xb6\x1c\x8e\x66\xe6\xbc\x07\x00\x00\xff\xff\x49\x6f\x8d\x95\x15\x02\x00\x00")
+
+func tokensSQLBytes() ([]byte, error) {
+	return bindataRead(
+		_tokensSQL,
+		"tokens.sql",
+	)
+}
+
+func tokensSQL() (*asset, error) {
+	bytes, err := tokensSQLBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "tokens.sql", size: 533, mode: os.FileMode(420), modTime: time.Unix(1485163064, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -125,7 +146,7 @@ func usersSQL() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "users.sql", size: 425, mode: os.FileMode(420), modTime: time.Unix(1482169984, 0)}
+	info := bindataFileInfo{name: "users.sql", size: 425, mode: os.FileMode(420), modTime: time.Unix(1482487794, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -184,6 +205,7 @@ func AssetNames() []string {
 var _bindata = map[string]func() (*asset, error){
 	"extensions.sql": extensionsSQL,
 	"tasks.sql":      tasksSQL,
+	"tokens.sql":     tokensSQL,
 	"users.sql":      usersSQL,
 }
 
@@ -230,6 +252,7 @@ type bintree struct {
 var _bintree = &bintree{nil, map[string]*bintree{
 	"extensions.sql": {extensionsSQL, map[string]*bintree{}},
 	"tasks.sql":      {tasksSQL, map[string]*bintree{}},
+	"tokens.sql":     {tokensSQL, map[string]*bintree{}},
 	"users.sql":      {usersSQL, map[string]*bintree{}},
 }}
 

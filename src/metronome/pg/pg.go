@@ -14,6 +14,11 @@ type db struct {
 var d *db
 var onceDB sync.Once
 
+var (
+	// ErrNoRows is throwed when SELECT returns nothing
+	ErrNoRows = pg.ErrNoRows
+)
+
 // DB get a database instance
 func DB() *pg.DB {
 	onceDB.Do(func() {
