@@ -30,6 +30,9 @@ var initDatabaseCmd = &cobra.Command{
 		if _, err := database.Exec(string(pg.MustAsset("tasks.sql"))); err != nil {
 			log.Errorf("Failed to setup tasks table: %v", err)
 		}
+		if _, err := database.Exec(string(pg.MustAsset("tokens.sql"))); err != nil {
+			log.Errorf("Failed to setup tokens table: %v", err)
+		}
 
 		log.Info("Done")
 	},

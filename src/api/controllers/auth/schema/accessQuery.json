@@ -1,0 +1,14 @@
+{
+  "properties": {
+    "refreshToken": {
+      "$ref": "#/definitions/refreshToken"
+    },
+    "type": {
+      "type": "string",
+      "enum": ["access"]
+    }
+  },
+  "required": ["refreshToken", "type"],
+  "type": "object",
+  "additionalProperties": false
+}

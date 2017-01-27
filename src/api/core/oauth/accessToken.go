@@ -1,26 +1,27 @@
 package oauth
 
 import (
+	"encoding/base64"
 	"encoding/hex"
 	"fmt"
 	"time"
 
 	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/spf13/viper"
-
-	"github.com/runabove/metronome/src/api/models"
 )
 
 // AuthClaims add roles to the jwt claims.
 type AuthClaims struct {
-	Roles []string `json:"roles"`
+	Roles        []string `json:"roles"`
+	RefreshToken string   `json:"refreshToken"`
 	jwt.StandardClaims
 }
 
-// GenerateToken return a new token.
-func GenerateToken(userID string, roles []string) models.Token {
+// GenerateAccessToken return a new token.
+func GenerateAccessToken(userID string, roles []string, refreshToken string) string {
 	claims := AuthClaims{
 		roles,
+		refreshToken,
 		jwt.StandardClaims{
 			ExpiresAt: time.Now().Add(time.Second * time.Duration(viper.GetInt("token.ttl"))).Unix(),
 			IssuedAt:  time.Now().Unix(),
@@ -39,7 +40,7 @@ func GenerateToken(userID string, roles []string) models.Token {
 		panic(err)
 	}
 
-	return models.Token{tokenString}
+	return tokenString
 }
 
 // GetToken return a token from a token string.
@@ -73,4 +74,14 @@ func UserID(token *jwt.Token) string {
 func Roles(token *jwt.Token) []string {
 	claims := token.Claims.(*AuthClaims)
 	return claims.Roles
+}
+
+// RefreshToken return the refreshToken
+func RefreshToken(token *jwt.Token) string {
+	claims := token.Claims.(*AuthClaims)
+	refreshToken, err := base64.StdEncoding.DecodeString(claims.RefreshToken)
+	if err != nil {
+		panic("")
+	}
+	return string(refreshToken)
 }

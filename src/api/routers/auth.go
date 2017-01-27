@@ -6,5 +6,6 @@ import (
 
 // AuthRoutes defined auth endpoints
 var AuthRoutes = Routes{
-	Route{"Get access token", "POST", "/", authCtrl.AccessToken},
+	Route{"Get access token", "POST", "/", authCtrl.AuthHandler},
+	Route{"Logoff a user", "POST", "/logout", authCtrl.LogoutHandler},
 }

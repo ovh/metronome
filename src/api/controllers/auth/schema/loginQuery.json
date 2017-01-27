@@ -5,9 +5,13 @@
     },
     "password": {
       "$ref": "#/definitions/password"
+    },
+    "type": {
+      "type": "string",
+      "enum": ["bearer"]
     }
   },
-  "required": ["username", "password"],
+  "required": ["username", "password", "type"],
   "type": "object",
   "additionalProperties": false
 }
