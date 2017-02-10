@@ -1,0 +1,10 @@
+{
+  "properties": {
+    "type": {
+      "type": "string",
+      "enum": ["bearer", "access"]
+    }
+  },
+  "required": ["type"],
+  "type": "object"
+}
