@@ -28,6 +28,12 @@ func AuthHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	authQueryResult := core.ValidateJSON("auth", "authQuery", string(body))
+	if !authQueryResult.Valid {
+		out.JSON(w, 422, authQueryResult.Errors)
+		return
+	}
+
 	switch tokenQuery.Type {
 
 	case "bearer":

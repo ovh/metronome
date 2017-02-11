@@ -102,8 +102,8 @@ Complete documentation is available at http://runabove.github.io/metronome`,
 		// Log request
 		logger := &negroni.Logger{
 			core.RequestLogger{
-				"access",
-				log.InfoLevel,
+				LogType: "access",
+				Level:   log.InfoLevel,
 			},
 		}
 		n.Use(logger)
