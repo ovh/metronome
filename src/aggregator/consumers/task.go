@@ -2,6 +2,7 @@ package consumers
 
 import (
 	"strconv"
+	"time"
 
 	"github.com/Shopify/sarama"
 	log "github.com/Sirupsen/logrus"
@@ -18,6 +19,8 @@ import (
 // TaskConsumer consumed tasks messages from a Kafka topic to maintain the tasks database.
 type TaskConsumer struct {
 	consumer                 *saramaC.Consumer
+	doneTasks                int
+	lastCommit               time.Time
 	taskCounter              *prometheus.CounterVec
 	taskUnprocessableCounter *prometheus.CounterVec
 	taskProcessedCounter     *prometheus.CounterVec
@@ -39,7 +42,9 @@ func NewTaskConsumer() (*TaskConsumer, error) {
 	}
 
 	tc := &TaskConsumer{
-		consumer: consumer,
+		consumer:   consumer,
+		doneTasks:  0,
+		lastCommit: time.Now(),
 	}
 
 	// metrics
@@ -76,6 +81,7 @@ func NewTaskConsumer() (*TaskConsumer, error) {
 		[]string{"partition"})
 	prometheus.MustRegister(tc.taskPublishErrorCounter)
 
+	// Consume Kafka Tasks
 	go func() {
 		for {
 			select {
@@ -115,6 +121,7 @@ func (tc *TaskConsumer) handleMsg(msg *sarama.ConsumerMessage) {
 		_, err := db.Model(&t).Delete()
 		if err != nil {
 			log.Errorf("%v", err)
+			return
 		}
 	} else {
 		log.Infof("UPSERT task: %s", t.GUID)
@@ -122,6 +129,7 @@ func (tc *TaskConsumer) handleMsg(msg *sarama.ConsumerMessage) {
 		_, err := db.Model(&t).OnConflict("(guid) DO UPDATE").Set("name = ?name").Set("urn = ?urn").Set("schedule = ?schedule").Insert()
 		if err != nil {
 			log.Errorf("%v", err)
+			return
 		}
 	}
 	tc.taskProcessedCounter.WithLabelValues(strconv.Itoa(int(msg.Partition))).Inc()
@@ -129,5 +137,19 @@ func (tc *TaskConsumer) handleMsg(msg *sarama.ConsumerMessage) {
 	if err := redis.DB().PublishTopic(t.UserID, "task", t.ToJSON()).Err(); err != nil {
 		tc.taskPublishErrorCounter.WithLabelValues(strconv.Itoa(int(msg.Partition))).Inc()
 		log.Error(err)
+		return
+	}
+	tc.consumer.MarkOffset(msg, "aggregated")
+
+	tc.doneTasks++
+	if tc.doneTasks >= 100 || time.Now().After(tc.lastCommit.Add(time.Duration(time.Second*10))) {
+		// If more than 10 seconds since last offset commit ORmore than 100 messages pending
+		err := tc.consumer.CommitOffsets()
+		if err != nil {
+			log.Error(err)
+		} else {
+			tc.doneTasks = 0
+			tc.lastCommit = time.Now()
+		}
 	}
 }
