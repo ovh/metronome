@@ -9,9 +9,9 @@ import (
 	"github.com/spf13/viper"
 	"github.com/urfave/negroni"
 
-	"github.com/runabove/metronome/src/api/core"
-	"github.com/runabove/metronome/src/api/routers"
-	"github.com/runabove/metronome/src/metronome/metrics"
+	"github.com/ovh/metronome/src/api/core"
+	"github.com/ovh/metronome/src/api/routers"
+	"github.com/ovh/metronome/src/metronome/metrics"
 )
 
 var cfgFile string
@@ -91,7 +91,7 @@ var RootCmd = &cobra.Command{
 	Use:   "metronome-api",
 	Short: "Metronome api provide a rest api to manage metronome tasks",
 	Long: `Metronome is a distributed and fault-tolerant event scheduler built with love by ovh teams and friends in Go.
-Complete documentation is available at http://runabove.github.io/metronome`,
+Complete documentation is available at http://ovh.github.io/metronome`,
 	Run: func(cmd *cobra.Command, args []string) {
 		log.Info("Metronome API starting")
 

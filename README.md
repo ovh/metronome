@@ -1,11 +1,12 @@
 
-<h1><img src="https://rawgithub.com/runabove/metronome/master/icon.svg" width="48" height="48">&nbsp;Metronome - Distributed, fault tolerant scheduler</h1>
-[![version](https://img.shields.io/badge/status-alpha-orange.svg)](https://github.com/runabove/metronome)
-[![Build Status](https://travis-ci.org/runabove/metronome.svg?branch=ci)](https://travis-ci.org/runabove/metronome)
-[![codecov](https://codecov.io/gh/runabove/metronome/branch/master/graph/badge.svg)](https://codecov.io/gh/runabove/metronome)
-[![Go Report Card](https://goreportcard.com/badge/github.com/runabove/metronome)](https://goreportcard.com/report/github.com/runabove/metronome)
-[![GoDoc](https://godoc.org/github.com/runabove/metronome?status.svg)](https://godoc.org/github.com/runabove/metronome)
-[![Join the chat at https://gitter.im/runabove-metronome/Lobby](https://badges.gitter.im/runabove-metronome/Lobby.svg)](https://gitter.im/runabove-metronome/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+<h1><img src="https://rawgithub.com/ovh/metronome/master/icon.svg" width="48" height="48">&nbsp;Metronome - Distributed, fault tolerant scheduler</h1>
+
+[![version](https://img.shields.io/badge/status-alpha-orange.svg)](https://github.com/ovh/**metronome**)
+[![Build Status](https://travis-ci.org/ovh/metronome.svg?branch=ci)](https://travis-ci.org/ovh/metronome)
+[![codecov](https://codecov.io/gh/ovh/metronome/branch/master/graph/badge.svg)](https://codecov.io/gh/ovh/metronome)
+[![Go Report Card](https://goreportcard.com/badge/github.com/ovh/metronome)](https://goreportcard.com/report/github.com/ovh/metronome)
+[![GoDoc](https://godoc.org/github.com/ovh/metronome?status.svg)](https://godoc.org/github.com/ovh/metronome)
+[![Join the chat at https://gitter.im/ovh-metronome/Lobby](https://badges.gitter.im/ovh-metronome/Lobby.svg)](https://gitter.im/ovh-metronome/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 Metronome is a distributed and fault-tolerant event scheduler. It can be used to trigger remote systems throught events (HTTP, AMQP, KAFKA).
 
@@ -45,6 +46,6 @@ Instructions on how to contribute to Metronome are available on the [Contributin
 
 - Twitter: [@notd33d33](https://twitter.com/notd33d33)
 
-[UI]: https://github.com/runabove/metronome-ui
+[UI]: https://github.com/ovh/metronome-ui
 [Contributing]: CONTRIBUTING.md
 [ISO8601]: http://en.wikipedia.org/wiki/ISO_8601 "ISO8601 Standard"

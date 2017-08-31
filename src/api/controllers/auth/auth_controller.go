@@ -3,11 +3,11 @@ package authCtrl
 import (
 	"net/http"
 
-	"github.com/runabove/metronome/src/api/core"
-	"github.com/runabove/metronome/src/api/core/io/in"
-	"github.com/runabove/metronome/src/api/core/io/out"
-	authSrv "github.com/runabove/metronome/src/api/services/auth"
-	userSrv "github.com/runabove/metronome/src/api/services/user"
+	"github.com/ovh/metronome/src/api/core"
+	"github.com/ovh/metronome/src/api/core/io/in"
+	"github.com/ovh/metronome/src/api/core/io/out"
+	authSrv "github.com/ovh/metronome/src/api/services/auth"
+	userSrv "github.com/ovh/metronome/src/api/services/user"
 )
 
 type tokenQuery struct {

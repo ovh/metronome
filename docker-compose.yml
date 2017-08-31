@@ -31,7 +31,7 @@ services:
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
 
   ui:
-    build: git://github.com/runabove/metronome-ui
+    build: git://github.com/ovh/metronome-ui
     ports:
       - "8080:8080"
 

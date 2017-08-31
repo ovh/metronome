@@ -1,5 +1,5 @@
 AGENTS=api scheduler aggregator worker
-ROOT_DIR=github.com/runabove/metronome
+ROOT_DIR=github.com/ovh/metronome
 SRC_DIR=$(ROOT_DIR)/src
 BUILD_DIR=build
 
@@ -14,11 +14,14 @@ VPATH= $(BUILD_DIR)
 .PHONY: all
 all: agents
 
+.PHONY: release
+release: assets $(AGENTS)
+
 .PHONY: agents
 agents: assets $(AGENTS)
 
 $(AGENTS): $$(call rwildcard, src/$$@, *.go) $$(call rwildcard, src/metronome, *.go)
-	$(CC) $(CFLAGS) -o $(BUILD_DIR)/$@ $(SRC_DIR)/$@
+	$(CC) $(DFLAGS) -o $(BUILD_DIR)/$@ $(SRC_DIR)/$@
 
 .PHONY: install
 install: agents

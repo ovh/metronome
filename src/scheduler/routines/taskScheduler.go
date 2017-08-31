@@ -11,9 +11,9 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	redisV5 "gopkg.in/redis.v5"
 
-	"github.com/runabove/metronome/src/metronome/models"
-	"github.com/runabove/metronome/src/metronome/redis"
-	"github.com/runabove/metronome/src/scheduler/core"
+	"github.com/ovh/metronome/src/metronome/models"
+	"github.com/ovh/metronome/src/metronome/redis"
+	"github.com/ovh/metronome/src/scheduler/core"
 )
 
 // batch represent a batch of job to send

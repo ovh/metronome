@@ -8,9 +8,9 @@ import (
 	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
 
-	"github.com/runabove/metronome/src/metronome/models"
+	"github.com/ovh/metronome/src/metronome/models"
 
-	core "github.com/runabove/metronome/src/scheduler/core"
+	core "github.com/ovh/metronome/src/scheduler/core"
 )
 
 func entry(schedule string) (*core.Entry, error) {

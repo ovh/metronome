@@ -10,10 +10,10 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/spf13/viper"
 
-	"github.com/runabove/metronome/src/metronome/kafka"
-	"github.com/runabove/metronome/src/metronome/models"
-	"github.com/runabove/metronome/src/metronome/pg"
-	"github.com/runabove/metronome/src/metronome/redis"
+	"github.com/ovh/metronome/src/metronome/kafka"
+	"github.com/ovh/metronome/src/metronome/models"
+	"github.com/ovh/metronome/src/metronome/pg"
+	"github.com/ovh/metronome/src/metronome/redis"
 )
 
 // TaskConsumer consumed tasks messages from a Kafka topic to maintain the tasks database.

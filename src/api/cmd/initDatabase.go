@@ -4,7 +4,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/spf13/cobra"
 
-	"github.com/runabove/metronome/src/metronome/pg"
+	"github.com/ovh/metronome/src/metronome/pg"
 )
 
 // init - define command line arguments.

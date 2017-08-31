@@ -3,12 +3,12 @@ package userCtrl
 import (
 	"net/http"
 
-	"github.com/runabove/metronome/src/api/core"
-	"github.com/runabove/metronome/src/api/core/io/in"
-	"github.com/runabove/metronome/src/api/core/io/out"
-	"github.com/runabove/metronome/src/api/models"
-	authSrv "github.com/runabove/metronome/src/api/services/auth"
-	userSrv "github.com/runabove/metronome/src/api/services/user"
+	"github.com/ovh/metronome/src/api/core"
+	"github.com/ovh/metronome/src/api/core/io/in"
+	"github.com/ovh/metronome/src/api/core/io/out"
+	"github.com/ovh/metronome/src/api/models"
+	authSrv "github.com/ovh/metronome/src/api/services/auth"
+	userSrv "github.com/ovh/metronome/src/api/services/user"
 )
 
 // Create endpoint handle the user account creation.

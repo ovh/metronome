@@ -5,12 +5,12 @@ import (
 
 	"github.com/gorilla/mux"
 
-	"github.com/runabove/metronome/src/api/core"
-	"github.com/runabove/metronome/src/api/core/io/in"
-	"github.com/runabove/metronome/src/api/core/io/out"
-	authSrv "github.com/runabove/metronome/src/api/services/auth"
-	taskSrv "github.com/runabove/metronome/src/api/services/task"
-	"github.com/runabove/metronome/src/metronome/models"
+	"github.com/ovh/metronome/src/api/core"
+	"github.com/ovh/metronome/src/api/core/io/in"
+	"github.com/ovh/metronome/src/api/core/io/out"
+	authSrv "github.com/ovh/metronome/src/api/services/auth"
+	taskSrv "github.com/ovh/metronome/src/api/services/task"
+	"github.com/ovh/metronome/src/metronome/models"
 )
 
 // Create endoint handle task creation.

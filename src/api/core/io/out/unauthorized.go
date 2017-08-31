@@ -3,7 +3,7 @@ package out
 import (
 	"net/http"
 
-	"github.com/runabove/metronome/src/api/models"
+	"github.com/ovh/metronome/src/api/models"
 )
 
 // Unauthorized perform a 401 unauthorized HTTP response.

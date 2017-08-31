@@ -14,7 +14,7 @@ package main
 import (
 	log "github.com/Sirupsen/logrus"
 
-	"github.com/runabove/metronome/src/aggregator/cmd"
+	"github.com/ovh/metronome/src/aggregator/cmd"
 )
 
 func main() {

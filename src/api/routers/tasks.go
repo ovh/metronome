@@ -1,7 +1,7 @@
 package routers
 
 import (
-	tasksCtrl "github.com/runabove/metronome/src/api/controllers/tasks"
+	tasksCtrl "github.com/ovh/metronome/src/api/controllers/tasks"
 )
 
 // TasksRoutes defined tasks endpoints.

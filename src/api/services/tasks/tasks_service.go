@@ -4,10 +4,10 @@ package taskSrv
 import (
 	log "github.com/Sirupsen/logrus"
 
-	amodels "github.com/runabove/metronome/src/api/models"
-	"github.com/runabove/metronome/src/metronome/models"
-	"github.com/runabove/metronome/src/metronome/pg"
-	"github.com/runabove/metronome/src/metronome/redis"
+	amodels "github.com/ovh/metronome/src/api/models"
+	"github.com/ovh/metronome/src/metronome/models"
+	"github.com/ovh/metronome/src/metronome/pg"
+	"github.com/ovh/metronome/src/metronome/redis"
 )
 
 // All retrieve all the tasks of a user.

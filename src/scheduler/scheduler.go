@@ -12,7 +12,7 @@ package main
 import (
 	log "github.com/Sirupsen/logrus"
 
-	"github.com/runabove/metronome/src/scheduler/cmd"
+	"github.com/ovh/metronome/src/scheduler/cmd"
 )
 
 func main() {

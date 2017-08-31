@@ -1,7 +1,7 @@
 package routers
 
 import (
-	wsCtrl "github.com/runabove/metronome/src/api/controllers/ws"
+	wsCtrl "github.com/ovh/metronome/src/api/controllers/ws"
 )
 
 // WsRoutes defined websockets endpoints.

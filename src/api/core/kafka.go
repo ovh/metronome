@@ -8,7 +8,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/spf13/viper"
 
-	"github.com/runabove/metronome/src/metronome/kafka"
+	"github.com/ovh/metronome/src/metronome/kafka"
 )
 
 // Kafka handle Kafka connection.

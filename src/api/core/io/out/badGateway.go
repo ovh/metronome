@@ -3,7 +3,7 @@ package out
 import (
 	"net/http"
 
-	"github.com/runabove/metronome/src/api/models"
+	"github.com/ovh/metronome/src/api/models"
 )
 
 // BadGateway perform a 502 bad gateway HTTP response.
