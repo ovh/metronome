@@ -1,6 +1,7 @@
 
 <h1><img src="https://rawgithub.com/ovh/metronome/master/icon.svg" width="48" height="48">&nbsp;Metronome - Distributed, fault tolerant scheduler</h1>
-[![version](https://img.shields.io/badge/status-alpha-orange.svg)](https://github.com/ovh/metronome)
+
+[![version](https://img.shields.io/badge/status-alpha-orange.svg)](https://github.com/ovh/**metronome**)
 [![Build Status](https://travis-ci.org/ovh/metronome.svg?branch=ci)](https://travis-ci.org/ovh/metronome)
 [![codecov](https://codecov.io/gh/ovh/metronome/branch/master/graph/badge.svg)](https://codecov.io/gh/ovh/metronome)
 [![Go Report Card](https://goreportcard.com/badge/github.com/ovh/metronome)](https://goreportcard.com/report/github.com/ovh/metronome)

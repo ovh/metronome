@@ -22,9 +22,11 @@ type Client struct {
 // DB get a database instance
 func DB() *Client {
 	onceDB.Do(func() {
+		viper.SetDefault("redis.pass", "")
+
 		redis := redis.NewClient(&redis.Options{
 			Addr:     viper.GetString("redis.addr"),
-			Password: "",
+			Password: viper.GetString("redis.pass"),
 			DB:       0,
 		})
 
