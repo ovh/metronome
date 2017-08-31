@@ -1,7 +1,7 @@
 package routers
 
 import (
-	userCtrl "github.com/runabove/metronome/src/api/controllers/user"
+	userCtrl "github.com/ovh/metronome/src/api/controllers/user"
 )
 
 // UserRoutes defined user endpoints.

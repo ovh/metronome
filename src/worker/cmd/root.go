@@ -8,8 +8,8 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	"github.com/runabove/metronome/src/metronome/metrics"
-	"github.com/runabove/metronome/src/worker/consumers"
+	"github.com/ovh/metronome/src/metronome/metrics"
+	"github.com/ovh/metronome/src/worker/consumers"
 )
 
 var cfgFile string
@@ -79,7 +79,7 @@ var RootCmd = &cobra.Command{
 	Use:   "metronome-worker",
 	Short: "Metronome worker execute jobs",
 	Long: `Metronome is a distributed and fault-tolerant event scheduler built with love by ovh teams and friends in Go.
-Complete documentation is available at http://runabove.github.io/metronome`,
+Complete documentation is available at http://ovh.github.io/metronome`,
 	Run: func(cmd *cobra.Command, args []string) {
 		log.Info("Metronome Worker starting")
 

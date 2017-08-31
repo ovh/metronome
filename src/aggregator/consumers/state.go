@@ -9,9 +9,9 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/spf13/viper"
 
-	"github.com/runabove/metronome/src/metronome/kafka"
-	"github.com/runabove/metronome/src/metronome/models"
-	"github.com/runabove/metronome/src/metronome/redis"
+	"github.com/ovh/metronome/src/metronome/kafka"
+	"github.com/ovh/metronome/src/metronome/models"
+	"github.com/ovh/metronome/src/metronome/redis"
 )
 
 // StateConsumer consumed states messages from Kafka to maintain the state database.

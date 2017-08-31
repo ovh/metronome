@@ -1,5 +1,5 @@
 AGENTS=api scheduler aggregator worker
-ROOT_DIR=github.com/runabove/metronome
+ROOT_DIR=github.com/ovh/metronome
 SRC_DIR=$(ROOT_DIR)/src
 BUILD_DIR=build
 

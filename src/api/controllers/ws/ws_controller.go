@@ -5,11 +5,11 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/gorilla/websocket"
-	"github.com/runabove/metronome/src/api/core/ws"
+	"github.com/ovh/metronome/src/api/core/ws"
 
-	"github.com/runabove/metronome/src/api/core/io/out"
-	authSrv "github.com/runabove/metronome/src/api/services/auth"
-	"github.com/runabove/metronome/src/metronome/redis"
+	"github.com/ovh/metronome/src/api/core/io/out"
+	authSrv "github.com/ovh/metronome/src/api/services/auth"
+	"github.com/ovh/metronome/src/metronome/redis"
 )
 
 var upgrader = websocket.Upgrader{

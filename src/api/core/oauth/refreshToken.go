@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/runabove/metronome/src/api/models"
-	"github.com/runabove/metronome/src/metronome/core"
+	"github.com/ovh/metronome/src/api/models"
+	"github.com/ovh/metronome/src/metronome/core"
 )
 
 // GenerateRefreshToken returns an Token

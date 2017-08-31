@@ -1,7 +1,7 @@
 package models
 
 import (
-	"github.com/runabove/metronome/src/metronome/models"
+	"github.com/ovh/metronome/src/metronome/models"
 )
 
 // TaskAns hold Task attributes and state fields.

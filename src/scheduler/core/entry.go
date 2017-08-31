@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/runabove/metronome/src/metronome/models"
+	"github.com/ovh/metronome/src/metronome/models"
 )
 
 // Entry is a task with execution time management.

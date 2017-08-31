@@ -6,10 +6,10 @@ import (
 
 	jwt "github.com/dgrijalva/jwt-go"
 
-	"github.com/runabove/metronome/src/api/core/oauth"
-	"github.com/runabove/metronome/src/api/models"
-	"github.com/runabove/metronome/src/metronome/core"
-	"github.com/runabove/metronome/src/metronome/pg"
+	"github.com/ovh/metronome/src/api/core/oauth"
+	"github.com/ovh/metronome/src/api/models"
+	"github.com/ovh/metronome/src/metronome/core"
+	"github.com/ovh/metronome/src/metronome/pg"
 )
 
 // BearerTokensFromUser return both new Access and Refresh tokens.

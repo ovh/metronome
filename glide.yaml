@@ -1,4 +1,4 @@
-package: github.com/runabove/metronome
+package: github.com/ovh/metronome
 import:
 - package: github.com/Shopify/sarama
 - package: github.com/Sirupsen/logrus

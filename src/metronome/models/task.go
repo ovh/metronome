@@ -10,8 +10,8 @@ import (
 
 	"github.com/Shopify/sarama"
 
-	"github.com/runabove/metronome/src/metronome/core"
-	"github.com/runabove/metronome/src/metronome/kafka"
+	"github.com/ovh/metronome/src/metronome/core"
+	"github.com/ovh/metronome/src/metronome/kafka"
 )
 
 // Task holds task attributes.

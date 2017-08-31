@@ -6,9 +6,9 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 
-	acore "github.com/runabove/metronome/src/api/core"
-	"github.com/runabove/metronome/src/metronome/core"
-	"github.com/runabove/metronome/src/metronome/models"
+	acore "github.com/ovh/metronome/src/api/core"
+	"github.com/ovh/metronome/src/metronome/core"
+	"github.com/ovh/metronome/src/metronome/models"
 )
 
 // Create a new task.

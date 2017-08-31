@@ -4,8 +4,8 @@ package userSrv
 import (
 	"golang.org/x/crypto/bcrypt"
 
-	"github.com/runabove/metronome/src/api/models"
-	"github.com/runabove/metronome/src/metronome/pg"
+	"github.com/ovh/metronome/src/api/models"
+	"github.com/ovh/metronome/src/metronome/pg"
 )
 
 // Login made a lookup on the database base on username and perform password comparaison.
