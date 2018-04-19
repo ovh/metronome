@@ -1,46 +1,54 @@
-// Package taskSrv handle tasks database operations.
-package taskSrv
+// Package taskssrv handle tasks database operations.
+package taskssrv
 
 import (
-	log "github.com/Sirupsen/logrus"
-
 	amodels "github.com/ovh/metronome/src/api/models"
 	"github.com/ovh/metronome/src/metronome/models"
 	"github.com/ovh/metronome/src/metronome/pg"
 	"github.com/ovh/metronome/src/metronome/redis"
+	log "github.com/sirupsen/logrus"
 )
 
 // All retrieve all the tasks of a user.
 // Return nil if no task.
-func All(userID string) *amodels.TasksAns {
+func All(userID string) (*amodels.TasksAns, error) {
 
 	var tasks models.Tasks
 	db := pg.DB()
 
 	err := db.Model(&tasks).Where("user_id = ?", userID).Select()
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	if len(tasks) == 0 {
-		return nil
+		return nil, nil
 	}
 
 	states := redis.DB().HGetAll(userID)
 	if states.Err() != nil {
-		log.Error(states.Err()) // TODO log
+		return nil, states.Err()
 	}
 
 	var ans amodels.TasksAns
 	for _, t := range tasks {
 		var s models.State
-		s.FromJSON(states.Val()[t.GUID])
+		state, ok := states.Val()[t.GUID]
+		if !ok {
+			log.Warnf("No such entry in map states for key '%s'", t.GUID)
+			continue
+		}
+
+		if err = s.FromJSON([]byte(state)); err != nil {
+			return nil, err
+		}
+
 		ans = append(ans, amodels.TaskAns{
-			t,
-			s.At,
-			s.State,
+			Task:    t,
+			RunAt:   s.At,
+			RunCode: s.State,
 		})
 	}
 
-	return &ans
+	return &ans, err
 }

@@ -10,7 +10,7 @@
 package main
 
 import (
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/ovh/metronome/src/scheduler/cmd"
 )

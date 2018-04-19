@@ -26,6 +26,22 @@ var _ = Describe("Entry", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 		})
 
+		It("Same as", func() {
+			task := models.Task{
+				UserID:   "UserID",
+				GUID:     "GUID",
+				URN:      "URN",
+				Schedule: "R/2016-12-15T11:39:00Z/PT1S/ET1S",
+			}
+
+			entry, err := core.NewEntry(task)
+			Ω(err).ShouldNot(HaveOccurred())
+			Ω(entry.SameAs(task)).Should(BeTrue())
+			Ω(entry.UserID() == task.UserID).Should(BeTrue())
+			Ω(entry.URN() == task.URN).Should(BeTrue())
+			Ω(entry.GUID() == task.GUID).Should(BeTrue())
+		})
+
 		It("Bad schedule", func() {
 			_, err := entry("BadSchedule")
 			Ω(err).Should(HaveOccurred())
@@ -110,10 +126,12 @@ var _ = Describe("Entry", func() {
 	)
 
 	Describe("Plan", func() {
-		It("Should panic if not initialized", func() {
+		It("Should return an error if not initialized", func() {
 			entry, err := entry("R/2016-12-15T11:39:00Z/PT1S/ET1S")
 			Ω(err).ShouldNot(HaveOccurred())
-			Ω(func() { entry.Plan(time.Now()) }).Should(Panic())
+
+			_, err = entry.Plan(time.Now())
+			Ω(err).Should(HaveOccurred())
 		})
 
 		DescribeTable("Next",

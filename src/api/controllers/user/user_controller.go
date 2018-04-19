@@ -1,11 +1,13 @@
-package userCtrl
+package userctrl
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/ovh/metronome/src/api/core"
 	"github.com/ovh/metronome/src/api/core/io/in"
 	"github.com/ovh/metronome/src/api/core/io/out"
+	"github.com/ovh/metronome/src/api/factories"
 	"github.com/ovh/metronome/src/api/models"
 	authSrv "github.com/ovh/metronome/src/api/services/auth"
 	userSrv "github.com/ovh/metronome/src/api/services/user"
@@ -17,36 +19,52 @@ func Create(w http.ResponseWriter, r *http.Request) {
 
 	body, err := in.JSON(r, &user)
 	if err != nil {
-		out.JSON(w, 400, err)
+		out.JSON(w, http.StatusBadRequest, err)
 		return
 	}
 
-	result := core.ValidateJSON("user", "create", string(body))
+	result, err := core.ValidateJSON("user", "create", string(body))
+	if err != nil {
+		out.JSON(w, http.StatusInternalServerError, factories.Error(err))
+		return
+	}
+
 	if !result.Valid {
-		out.JSON(w, 422, result.Errors)
+		out.JSON(w, http.StatusUnprocessableEntity, result.Errors)
 		return
 	}
 
-	duplicated := userSrv.Create(&user)
+	duplicated, err := userSrv.Create(&user)
+	if err != nil {
+		out.JSON(w, http.StatusInternalServerError, factories.Error(err))
+		return
+	}
+
 	if duplicated {
 		var errs []core.JSONSchemaErr
 		errs = append(errs, core.JSONSchemaErr{
-			"name",
-			"duplicated",
-			"name is duplicated",
+			Field:       "name",
+			Type:        "duplicated",
+			Description: "name is duplicated",
 		})
-		out.JSON(w, 422, errs)
+
+		out.JSON(w, http.StatusUnprocessableEntity, errs)
 		return
 	}
 
-	out.JSON(w, 200, user)
+	out.JSON(w, http.StatusOK, user)
 }
 
 // Edit endoint handle user edit.
 func Edit(w http.ResponseWriter, r *http.Request) {
-	token := authSrv.GetToken(r.Header.Get("Authorization"))
+	token, err := authSrv.GetToken(r.Header.Get("Authorization"))
+	if err != nil {
+		out.JSON(w, http.StatusInternalServerError, factories.Error(err))
+		return
+	}
+
 	if token == nil {
-		out.Unauthorized(w)
+		out.JSON(w, http.StatusUnauthorized, factories.Error(errors.New("Unauthorized")))
 		return
 	}
 
@@ -54,44 +72,65 @@ func Edit(w http.ResponseWriter, r *http.Request) {
 
 	body, err := in.JSON(r, &user)
 	if err != nil {
-		out.JSON(w, 400, err)
+		out.JSON(w, http.StatusBadRequest, factories.Error(err))
 		return
 	}
 
-	result := core.ValidateJSON("user", "edit", string(body))
+	result, err := core.ValidateJSON("user", "edit", string(body))
+	if err != nil {
+		out.JSON(w, http.StatusInternalServerError, factories.Error(err))
+		return
+	}
+
 	if !result.Valid {
-		out.JSON(w, 422, result.Errors)
+		out.JSON(w, http.StatusUnprocessableEntity, result.Errors)
 		return
 	}
 
-	duplicated := userSrv.Edit(authSrv.UserID(token), &user)
+	duplicated, err := userSrv.Edit(authSrv.UserID(token), &user)
+	if err != nil {
+		out.JSON(w, http.StatusInternalServerError, factories.Error(err))
+		return
+	}
+
 	if duplicated {
 		var errs []core.JSONSchemaErr
 		errs = append(errs, core.JSONSchemaErr{
-			"name",
-			"duplicated",
-			"name is duplicated",
+			Field:       "name",
+			Type:        "duplicated",
+			Description: "name is duplicated",
 		})
-		out.JSON(w, 422, errs)
+
+		out.JSON(w, http.StatusUnprocessableEntity, errs)
 		return
 	}
 
-	out.Success(w)
+	w.WriteHeader(http.StatusOK)
 }
 
 // Current endoint return the user bind to the token.
 func Current(w http.ResponseWriter, r *http.Request) {
-	token := authSrv.GetToken(r.Header.Get("Authorization"))
+	token, err := authSrv.GetToken(r.Header.Get("Authorization"))
+	if err != nil {
+		out.JSON(w, http.StatusInternalServerError, factories.Error(err))
+		return
+	}
+
 	if token == nil {
-		out.Unauthorized(w)
+		out.JSON(w, http.StatusUnauthorized, factories.Error(errors.New("Unauthorized")))
 		return
 	}
 
-	user := userSrv.Get(authSrv.UserID(token))
+	user, err := userSrv.Get(authSrv.UserID(token))
+	if err != nil {
+		out.JSON(w, http.StatusInternalServerError, err)
+		return
+	}
+
 	if user == nil {
-		out.NotFound(w)
+		out.JSON(w, http.StatusNotFound, factories.Error(errors.New("Not found")))
 		return
 	}
 
-	out.JSON(w, 200, user)
+	out.JSON(w, http.StatusOK, user)
 }

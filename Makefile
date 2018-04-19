@@ -1,68 +1,111 @@
-AGENTS=api scheduler aggregator worker
-ROOT_DIR=github.com/ovh/metronome
-SRC_DIR=$(ROOT_DIR)/src
-BUILD_DIR=build
+# Variables
+BUILD_DIR 		:= build
+GITHASH 			:= $(shell git rev-parse HEAD)
+VERSION				:= $(shell git describe --abbrev=0 --tags --always)
+DATE					:= $(shell TZ=UTC date -u '+%Y-%m-%dT%H:%M:%SZ UTC')
+LINT_PATHS		:= ./src/...
+FORMAT_PATHS 	:= ./src
 
-CC=go build
-CFLAGS=-race
+# Compilation variables
+CC 						:= go build
+DFLAGS 				:= -race
+CFLAGS 				:= -X 'github.com/ovh/metronome/src/aggregator/cmd.githash=$(GITHASH)' \
+	-X 'github.com/ovh/metronome/src/aggregator/cmd.date=$(DATE)' \
+	-X 'github.com/ovh/metronome/src/aggregator/cmd.version=$(VERSION)' \
+	-X 'github.com/ovh/metronome/src/api/cmd.githash=$(GITHASH)' \
+	-X 'github.com/ovh/metronome/src/api/cmd.date=$(DATE)' \
+	-X 'github.com/ovh/metronome/src/api/cmd.version=$(VERSION)' \
+	-X 'github.com/ovh/metronome/src/scheduler/cmd.githash=$(GITHASH)' \
+	-X 'github.com/ovh/metronome/src/scheduler/cmd.date=$(DATE)' \
+	-X 'github.com/ovh/metronome/src/scheduler/cmd.version=$(VERSION)' \
+	-X 'github.com/ovh/metronome/src/worker/cmd.githash=$(GITHASH)' \
+	-X 'github.com/ovh/metronome/src/worker/cmd.date=$(DATE)' \
+	-X 'github.com/ovh/metronome/src/worker/cmd.version=$(VERSION)'
+CROSS					:= GOOS=linux GOARCH=amd64
 
-rwildcard=$(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2) $(filter $(subst *,%,$2),$d))
-VPATH= $(BUILD_DIR)
+# Makefile variables
+VPATH 				:= $(BUILD_DIR)
+
+# Function definitions
+rwildcard			:= $(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2) $(filter $(subst *,%,$2),$d))
 
 .SECONDEXPANSION:
-
 .PHONY: all
-all: agents
+all: init dep format lint release
 
-.PHONY: release
-release: assets $(AGENTS)
-
-.PHONY: agents
-agents: assets $(AGENTS)
-
-$(AGENTS): $$(call rwildcard, src/$$@, *.go) $$(call rwildcard, src/metronome, *.go)
-	$(CC) $(DFLAGS) -o $(BUILD_DIR)/$@ $(SRC_DIR)/$@
-
-.PHONY: install
-install: agents
-	@for a in $(AGENTS); do cp "$(BUILD_DIR)/$$a" "$$GOPATH/bin/metronome-$$a"; done
-
-.PHONY: lint
-lint:
-	@command -v gometalinter >/dev/null 2>&1 || { echo >&2 "gometalinter is required but not available please follow instructions from https://github.com/alecthomas/gometalinter"; exit 1; }
-	gometalinter --deadline=180s --disable-all --enable=gofmt ./src/...
-	gometalinter --deadline=180s --disable-all --enable=vet ./src/...
-	gometalinter --deadline=180s --disable-all --enable=golint ./src/...
-	gometalinter --deadline=180s --disable-all --enable=ineffassign ./src/...
-	gometalinter --deadline=180s --disable-all --enable=misspell ./src/...
-	gometalinter --deadline=180s --disable-all --enable=staticcheck ./src/...
-
-.PHONY: format
-format:
-	gofmt -w -s ./src
-
-.PHONY: assets
-assets: src/api/core/assets.go src/metronome/pg/schema.go
-
-src/api/core/assets.go: $$(call rwildcard, src/api, *.json)
-	@command -v go-bindata >/dev/null 2>&1 || { echo >&2 "go-bindata is required but not available please follow instructions from https://github.com/lestrrat/go-bindata"; exit 1; }
-	go-bindata -ignore=\\.*\\.go -o src/api/core/assets.go -pkg core -prefix "src/api/controllers" src/api/...
-
-src/metronome/pg/schema.go: $$(call rwildcard, src/metronome/pg/schema, *.sql)
-	@command -v go-bindata >/dev/null 2>&1 || { echo >&2 "go-bindata is required but not available please follow instructions from https://github.com/lestrrat/go-bindata"; exit 1; }
-	go-bindata -ignore=\\.*\\.go -o src/metronome/pg/schema.go -pkg pg -prefix "src/metronome/pg/schema" src/metronome/pg/schema/...
-
-
-.PHONY: dev
-dev: assets format lint agents
-
-.PHONY: test
-test:
-	ginkgo -r ./src
-.PHONY: testrun
-testrun:
-	ginkgo watch -r ./src
+.PHONY: init
+init:
+	go get -u github.com/golang/dep/...
+	go get -u github.com/alecthomas/gometalinter
+	go get -u github.com/gobuffalo/packr/...
+	go get -u github.com/onsi/ginkgo/ginkgo
+	go get -u golang.org/x/tools/cmd/cover
+	go get -u github.com/modocache/gover
+	$(GOPATH)/bin/gometalinter --install --no-vendored-linters
 
 .PHONY: clean
 clean:
-	-rm -r build
+	rm -rf $(BUILD_DIR)
+	rm -rf dist
+	$(GOPATH)/bin/packr clean -v
+
+.PHONY: dep
+dep: assets
+	$(GOPATH)/bin/dep ensure -v
+
+.PHONY: format
+format:
+	gofmt -w -s $(FORMAT_PATHS)
+
+.PHONY: lint
+lint:
+	$(GOPATH)/bin/gometalinter --disable-all --config .gometalinter.json $(LINT_PATHS)
+
+.PHONY: test
+test:
+	$(GOPATH)/bin/ginkgo -r --randomizeAllSpecs --randomizeSuites --failOnPending --cover --trace --race --progress --compilers=2
+
+.PHONY: testrun
+testrun:
+	$(GOPATH)/bin/ginkgo watch -r ./src
+
+.PHONY: cover
+cover:
+	$(GOPATH)/bin/gover ./src coverage.txt
+
+.PHONY: assets
+assets: src/api/core/core-packr.go src/metronome/pg/pg-packr.go
+
+%-packr.go:
+	$(GOPATH)/bin/packr -v
+
+.PHONY: dev
+dev: format lint build
+
+.PHONY: build
+build: assets $$(call rwildcard, ./src/aggregator, *.go) $$(call rwildcard, ./src/api, *.go) $$(call rwildcard, ./src/worker, *.go) $$(call rwildcard, ./src/scheduler, *.go) $$(call rwildcard, ./src/metronome, *.go)
+	$(CC) $(DFLAGS) -ldflags "-s -w $(CFLAGS)" -o $(BUILD_DIR)/aggregator src/aggregator/aggregator.go
+	$(CC) $(DFLAGS) -ldflags "-s -w $(CFLAGS)" -o $(BUILD_DIR)/api src/api/api.go
+	$(CC) $(DFLAGS) -ldflags "-s -w $(CFLAGS)" -o $(BUILD_DIR)/scheduler src/scheduler/scheduler.go
+	$(CC) $(DFLAGS) -ldflags "-s -w $(CFLAGS)" -o $(BUILD_DIR)/worker src/worker/worker.go
+
+.PHONY: release
+release: assets $$(call rwildcard, ./src/aggregator, *.go) $$(call rwildcard, ./src/api, *.go) $$(call rwildcard, ./src/worker, *.go) $$(call rwildcard, ./src/scheduler, *.go) $$(call rwildcard, ./src/metronome, *.go)
+	$(CC) -ldflags "-s -w $(CFLAGS)" -o $(BUILD_DIR)/aggregator src/aggregator/aggregator.go
+	$(CC) -ldflags "-s -w $(CFLAGS)" -o $(BUILD_DIR)/api src/api/api.go
+	$(CC) -ldflags "-s -w $(CFLAGS)" -o $(BUILD_DIR)/scheduler src/scheduler/scheduler.go
+	$(CC) -ldflags "-s -w $(CFLAGS)" -o $(BUILD_DIR)/worker src/worker/worker.go
+
+.PHONY: dist
+dist: assets $$(call rwildcard, ./src/aggregator, *.go) $$(call rwildcard, ./src/api, *.go) $$(call rwildcard, ./src/worker, *.go) $$(call rwildcard, ./src/scheduler, *.go) $$(call rwildcard, ./src/metronome, *.go)
+	$(CROSS) $(CC) -ldflags "-s -w $(CFLAGS)" -o $(BUILD_DIR)/aggregator src/aggregator/aggregator.go
+	$(CROSS) $(CC) -ldflags "-s -w $(CFLAGS)" -o $(BUILD_DIR)/api src/api/api.go
+	$(CROSS) $(CC) -ldflags "-s -w $(CFLAGS)" -o $(BUILD_DIR)/scheduler src/scheduler/scheduler.go
+	$(CROSS) $(CC) -ldflags "-s -w $(CFLAGS)" -o $(BUILD_DIR)/worker src/worker/worker.go
+
+.PHONY: install
+install: release
+	cp -v $(BUILD_DIR)/aggregator $(GOPATH)/bin/metronome-aggregator
+	cp -v $(BUILD_DIR)/api $(GOPATH)/bin/metronome-api
+	cp -v $(BUILD_DIR)/scheduler $(GOPATH)/bin/metronome-scheduler
+	cp -v $(BUILD_DIR)/worker $(GOPATH)/bin/metronome-worker

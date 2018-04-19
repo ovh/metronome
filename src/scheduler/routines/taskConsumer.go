@@ -6,9 +6,9 @@ import (
 	"time"
 
 	"github.com/Shopify/sarama"
-	log "github.com/Sirupsen/logrus"
-	saramaC "github.com/d33d33/sarama-cluster"
+	saramaC "github.com/bsm/sarama-cluster"
 	"github.com/prometheus/client_golang/prometheus"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 
 	"github.com/ovh/metronome/src/metronome/kafka"
@@ -36,8 +36,8 @@ type TaskConsumer struct {
 	taskUnprocessableCounter *prometheus.CounterVec
 }
 
-// NewTaskComsumer return a new task consumer
-func NewTaskComsumer() (*TaskConsumer, error) {
+// NewTaskConsumer return a new task consumer
+func NewTaskConsumer() (*TaskConsumer, error) {
 	brokers := viper.GetStringSlice("kafka.brokers")
 
 	config := saramaC.NewConfig()
@@ -111,7 +111,9 @@ func NewTaskComsumer() (*TaskConsumer, error) {
 				// hapenned at rebalance
 				if offsets[msg.Partition] < msg.Offset {
 					messages++
-					tc.handleMsg(msg)
+					if err := tc.handleMsg(msg); err != nil {
+						log.WithError(err).Error("Could not handle the message")
+					}
 					offsets[msg.Partition] = msg.Offset
 				}
 
@@ -179,16 +181,22 @@ func (tc *TaskConsumer) Close() (err error) {
 }
 
 // Handle incomming messages
-func (tc *TaskConsumer) handleMsg(msg *sarama.ConsumerMessage) {
+func (tc *TaskConsumer) handleMsg(msg *sarama.ConsumerMessage) error {
 	tc.taskCounter.WithLabelValues(strconv.Itoa(int(msg.Partition))).Inc()
 	var t models.Task
 	if err := t.FromKafka(msg); err != nil {
 		tc.taskUnprocessableCounter.WithLabelValues(strconv.Itoa(int(msg.Partition))).Inc()
-		log.Error(err)
-		return
+		return err
 	}
-	log.Debugf("Task received: %v partition %v", t.ToJSON(), msg.Partition)
+
+	body, err := t.ToJSON()
+	if err != nil {
+		return err
+	}
+
+	log.Debugf("Task received: %v partition %v", string(body), msg.Partition)
 	tc.partitions[msg.Partition] <- t
+	return nil
 }
 
 // Retrieve highWaterMarks for each partition

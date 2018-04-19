@@ -1,4 +1,4 @@
-FROM golang:1.7.4
+FROM golang:1.10.1
 MAINTAINER d33d33 <kevin@d33d33.fr>
 
 EXPOSE 8080
@@ -11,22 +11,24 @@ WORKDIR /go/src/github.com/ovh/metronome
 ADD https://raw.githubusercontent.com/vishnubob/wait-for-it/master/wait-for-it.sh ./wait-for-it.sh
 RUN chmod +x ./wait-for-it.sh
 
-# Install glide
-RUN curl https://glide.sh/get | sh
+# Install dep
+RUN go get -u github.com/golang/dep/...
+RUN go get -u github.com/gobuffalo/packr/...
 
 # Setup GO ENV
 ENV GOPATH /go
 ENV PATH $PATH:/usr/local/go/bin:$GOPATH/bin
 
+# Copy source
+COPY src ./src
+
 # Install dependencies
-COPY glide.yaml ./glide.yaml
-COPY glide.lock ./glide.lock
-RUN glide install
+COPY Gopkg.toml ./Gopkg.toml
+COPY Gopkg.lock ./Gopkg.lock
+RUN dep ensure -v
 
 # Build metronome
 COPY Makefile ./Makefile
-COPY src ./src
-RUN make
 RUN make install
 
 # Use default config

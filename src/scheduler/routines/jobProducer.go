@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/Shopify/sarama"
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 
 	"github.com/ovh/metronome/src/metronome/kafka"
@@ -23,7 +23,7 @@ type JobProducer struct {
 
 // NewJobProducer return a new job producer.
 // Read jobs to send from jobs channel.
-func NewJobProducer(jobs <-chan []models.Job) *JobProducer {
+func NewJobProducer(jobs <-chan []models.Job) (*JobProducer, error) {
 	config := kafka.NewConfig()
 	config.ClientID = "metronome-scheduler"
 	config.Producer.RequiredAcks = sarama.WaitForAll
@@ -37,7 +37,7 @@ func NewJobProducer(jobs <-chan []models.Job) *JobProducer {
 
 	producer, err := sarama.NewAsyncProducer(brokers, config)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	jp := &JobProducer{
@@ -96,7 +96,7 @@ func NewJobProducer(jobs <-chan []models.Job) *JobProducer {
 		}
 	}()
 
-	return jp
+	return jp, nil
 }
 
 // Close the job producer

@@ -2,7 +2,7 @@ package routines
 
 import (
 	"github.com/Shopify/sarama"
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 
 	"github.com/ovh/metronome/src/metronome/kafka"
@@ -60,10 +60,15 @@ func NewJobComsumer(offsets map[int32]int64, jobs chan models.Job) error {
 				case msg := <-pc.Messages():
 					var j models.Job
 					if err := j.FromKafka(msg); err != nil {
-						log.Error(err)
+						log.WithError(err).Warn("Could not retrieve the job from kafka message")
 						continue
 					}
-					log.Debugf("Job received: %v", j.ToJSON())
+					body, err := j.ToJSON()
+					if err != nil {
+						log.WithError(err).Warn("Could not deserialize the job")
+						continue
+					}
+					log.Debugf("Job received: %s", string(body))
 					jobs <- j
 
 					if (msg.Offset + 1) >= hwm[part] {

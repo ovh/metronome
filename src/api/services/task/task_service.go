@@ -1,10 +1,10 @@
-// Package taskSrv handle task Kafka messages.
-package taskSrv
+// Package tasksrv handle task Kafka messages.
+package tasksrv
 
 import (
 	"time"
 
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 
 	acore "github.com/ovh/metronome/src/api/core"
 	"github.com/ovh/metronome/src/metronome/core"

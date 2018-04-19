@@ -1,27 +1,21 @@
 language: go
 
 go:
-  - 1.7.x
+  - 1.10.x
 
 # this is necessary for fork builds to work
 go_import_path: github.com/ovh/metronome
 
 before_install:
-  - go get github.com/Masterminds/glide
-  - go get github.com/alecthomas/gometalinter
-  - go get github.com/onsi/ginkgo/ginkgo
-  - go get github.com/onsi/gomega
-  - go get github.com/modocache/gover
-
-before_script:
-  gometalinter --install --update
+  - make init
 
 script:
-  - glide install
+  - make dep
+  - make format
   - make lint
-  - make
-  - ginkgo -r --randomizeAllSpecs --randomizeSuites --failOnPending --cover --trace --race --progress --compilers=2
-  - gover ./src coverage.txt
+  - make release
+  - make test
+  - make cover
 
 after_success:
   - bash <(curl -s https://codecov.io/bash)

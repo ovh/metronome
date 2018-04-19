@@ -89,24 +89,21 @@ func (s *State) FromKafka(msg *sarama.ConsumerMessage) error {
 }
 
 // ToJSON serialize a State as JSON.
-func (s *State) ToJSON() string {
+func (s *State) ToJSON() ([]byte, error) {
 	out, err := json.Marshal(s)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
-	return string(out)
+	return out, nil
 }
 
 // FromJSON unserialize a State from JSON.
-func (s *State) FromJSON(in string) {
+func (s *State) FromJSON(in []byte) error {
 	if len(in) == 0 {
 		s.State = -1
-		return
+		return nil
 	}
 
-	err := json.Unmarshal([]byte(in), &s)
-	if err != nil {
-		panic(err)
-	}
+	return json.Unmarshal(in, &s)
 }

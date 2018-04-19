@@ -1,0 +1,15 @@
+{
+  "Vendor": true,
+  "DeadLine": "180s",
+  "Enable": [
+    "gofmt",
+    "vet",
+    "golint",
+    "ineffassign",
+    "misspell",
+    "staticcheck",
+    "unused",
+    "interfacer",
+    "deadcode"
+  ]
+}

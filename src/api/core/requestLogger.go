@@ -1,7 +1,7 @@
 package core
 
 import (
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 )
 
 // RequestLogger wrap logrus to a compliant negroni logger.

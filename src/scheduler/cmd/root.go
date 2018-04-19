@@ -3,9 +3,10 @@ package cmd
 import (
 	"os"
 	"os/signal"
+	"strings"
 	"sync"
 
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
@@ -13,29 +14,50 @@ import (
 	"github.com/ovh/metronome/src/scheduler/routines"
 )
 
-var cfgFile string
-var verbose bool
-
 // Scheduler init - define command line arguments
 func init() {
 	cobra.OnInitialize(initConfig)
-	RootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file to use")
-	RootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "verbose output")
+
+	RootCmd.PersistentFlags().StringP("config", "", "", "config file to use")
+	RootCmd.PersistentFlags().BoolP("verbose", "v", false, "verbose output")
+
 	RootCmd.Flags().StringSlice("kafka.brokers", []string{"localhost:9092"}, "kafka brokers address")
 	RootCmd.Flags().String("redis.addr", "127.0.0.1:6379", "redis address")
 	RootCmd.Flags().String("metrics.addr", "127.0.0.1:9100", "metrics address")
 
-	viper.BindPFlags(RootCmd.Flags())
+	if err := viper.BindPFlags(RootCmd.Flags()); err != nil {
+		log.WithError(err).Error("Could not bind the flags")
+	}
+
+	if err := viper.BindPFlags(RootCmd.PersistentFlags()); err != nil {
+		log.WithError(err).Error("Could not bind the persistent flags")
+	}
 }
 
 // Load config - initialize defaults and read config
 func initConfig() {
-	if verbose {
+	if viper.GetBool("verbose") {
 		log.SetLevel(log.DebugLevel)
 	}
 
+	// Set defaults
+	viper.SetDefault("metrics.addr", ":9100")
+	viper.SetDefault("metrics.path", "/metrics")
+	viper.SetDefault("redis.pass", "")
+	viper.SetDefault("kafka.tls", false)
+	viper.SetDefault("kafka.topics.tasks", "tasks")
+	viper.SetDefault("kafka.topics.jobs", "jobs")
+	viper.SetDefault("kafka.topics.states", "states")
+	viper.SetDefault("kafka.groups.schedulers", "schedulers")
+	viper.SetDefault("kafka.groups.aggregators", "aggregators")
+	viper.SetDefault("kafka.groups.workers", "workers")
+	viper.SetDefault("worker.poolsize", 100)
+	viper.SetDefault("token.ttl", 3600)
+	viper.SetDefault("redis.pass", "")
+
 	// Bind environment variables
 	viper.SetEnvPrefix("mtrsch")
+	viper.SetEnvKeyReplacer(strings.NewReplacer("_", "."))
 	viper.AutomaticEnv()
 
 	// Set config search path
@@ -64,6 +86,7 @@ func initConfig() {
 	}
 
 	// Load user defined config
+	cfgFile := viper.GetString("config")
 	if cfgFile != "" {
 		viper.SetConfigFile(cfgFile)
 		err := viper.ReadInConfig()
@@ -82,13 +105,13 @@ Complete documentation is available at http://ovh.github.io/metronome`,
 	Run: func(cmd *cobra.Command, args []string) {
 		log.Info("Metronome Scheduler starting")
 
-		metrics.Serve()
-
 		log.Info("Loading tasks")
-		tc, err := routines.NewTaskComsumer()
+		tc, err := routines.NewTaskConsumer()
 		if err != nil {
-			log.Fatal(err)
+			log.WithError(err).Fatal("Could not start the task consumer")
 		}
+
+		metrics.Serve()
 
 		// Trap SIGINT to trigger a shutdown.
 		sigint := make(chan os.Signal, 1)
@@ -105,12 +128,19 @@ Complete documentation is available at http://ovh.github.io/metronome`,
 				schedulers.Add(1)
 				go func() {
 					log.Infof("Scheduler start %v", partition.Partition)
-					ts := routines.NewTaskScheduler(partition.Partition, partition.Tasks)
+					ts, err := routines.NewTaskScheduler(partition.Partition, partition.Tasks)
+					if err != nil {
+						log.WithError(err).Error("Could not create a new task scheduler")
+						return
+					}
 
 					tc.WaitForDrain()
 					log.Infof("Scheduler tasks loaded %v", partition.Partition)
 					if running {
-						ts.Start()
+						if err = ts.Start(); err != nil {
+							log.WithError(err).Error("Could not start the task scheduler")
+							return
+						}
 						log.Infof("Scheduler started %v", partition.Partition)
 					}
 
@@ -125,7 +155,10 @@ Complete documentation is available at http://ovh.github.io/metronome`,
 			}
 		}
 
-		tc.Close()
+		if err = tc.Close(); err != nil {
+			log.WithError(err).Error("Could not stop gracefully the task consumer")
+		}
+
 		log.Infof("Consumer halted")
 		schedulers.Wait()
 	},

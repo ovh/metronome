@@ -5,9 +5,9 @@ import (
 	"time"
 
 	"github.com/Shopify/sarama"
-	log "github.com/Sirupsen/logrus"
-	saramaC "github.com/d33d33/sarama-cluster"
+	saramaC "github.com/bsm/sarama-cluster"
 	"github.com/prometheus/client_golang/prometheus"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 
 	"github.com/ovh/metronome/src/metronome/kafka"
@@ -89,7 +89,10 @@ func NewTaskConsumer() (*TaskConsumer, error) {
 				if !ok { // shuting down
 					return
 				}
-				tc.handleMsg(msg)
+				if err := tc.handleMsg(msg); err != nil {
+					log.WithError(err).Warn("Could not handle the task")
+					continue
+				}
 			}
 		}
 	}()
@@ -104,13 +107,12 @@ func (tc *TaskConsumer) Close() error {
 
 // Handle message from Kafka.
 // Apply updates to the database.
-func (tc *TaskConsumer) handleMsg(msg *sarama.ConsumerMessage) {
+func (tc *TaskConsumer) handleMsg(msg *sarama.ConsumerMessage) error {
 	tc.taskCounter.WithLabelValues(strconv.Itoa(int(msg.Partition))).Inc()
 	var t models.Task
 	if err := t.FromKafka(msg); err != nil {
 		tc.taskUnprocessableCounter.WithLabelValues(strconv.Itoa(int(msg.Partition))).Inc()
-		log.Error(err)
-		return
+		return err
 	}
 
 	db := pg.DB()
@@ -120,36 +122,39 @@ func (tc *TaskConsumer) handleMsg(msg *sarama.ConsumerMessage) {
 
 		_, err := db.Model(&t).Delete()
 		if err != nil {
-			log.Errorf("%v", err)
-			return
+			return err
 		}
 	} else {
 		log.Infof("UPSERT task: %s", t.GUID)
 
 		_, err := db.Model(&t).OnConflict("(guid) DO UPDATE").Set("name = ?name").Set("urn = ?urn").Set("schedule = ?schedule").Insert()
 		if err != nil {
-			log.Errorf("%v", err)
-			return
+			return err
 		}
 	}
 	tc.taskProcessedCounter.WithLabelValues(strconv.Itoa(int(msg.Partition))).Inc()
 
-	if err := redis.DB().PublishTopic(t.UserID, "task", t.ToJSON()).Err(); err != nil {
-		tc.taskPublishErrorCounter.WithLabelValues(strconv.Itoa(int(msg.Partition))).Inc()
-		log.Error(err)
-		return
+	body, err := t.ToJSON()
+	if err != nil {
+		return err
 	}
-	tc.consumer.MarkOffset(msg, "aggregated")
 
+	if err = redis.DB().PublishTopic(t.UserID, "task", string(body)).Err(); err != nil {
+		tc.taskPublishErrorCounter.WithLabelValues(strconv.Itoa(int(msg.Partition))).Inc()
+		return err
+	}
+
+	tc.consumer.MarkOffset(msg, "aggregated")
 	tc.doneTasks++
 	if tc.doneTasks >= 100 || time.Now().After(tc.lastCommit.Add(time.Duration(time.Second*10))) {
 		// If more than 10 seconds since last offset commit ORmore than 100 messages pending
-		err := tc.consumer.CommitOffsets()
-		if err != nil {
-			log.Error(err)
-		} else {
-			tc.doneTasks = 0
-			tc.lastCommit = time.Now()
+		if err = tc.consumer.CommitOffsets(); err != nil {
+			return err
 		}
+
+		tc.doneTasks = 0
+		tc.lastCommit = time.Now()
 	}
+
+	return nil
 }

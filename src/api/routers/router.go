@@ -32,23 +32,20 @@ func InitRoutes() *mux.Router {
 
 func bind(router *mux.Router, base string, routes Routes) {
 	for _, route := range routes {
-		var handler http.Handler
-		handler = route.HandlerFunc
-
 		p := path.Join(base, route.Pattern)
 
 		router.
 			Methods(route.Method).
 			Path(p).
 			Name(route.Name).
-			Handler(handler)
+			HandlerFunc(route.HandlerFunc)
 
 		if p != "/" {
 			router.
 				Methods(route.Method).
 				Path(p + "/").
 				Name(route.Name).
-				Handler(handler)
+				HandlerFunc(route.HandlerFunc)
 		}
 	}
 }

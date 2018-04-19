@@ -1,11 +1,13 @@
-package authCtrl
+package authctrl
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/ovh/metronome/src/api/core"
 	"github.com/ovh/metronome/src/api/core/io/in"
 	"github.com/ovh/metronome/src/api/core/io/out"
+	"github.com/ovh/metronome/src/api/factories"
 	authSrv "github.com/ovh/metronome/src/api/services/auth"
 	userSrv "github.com/ovh/metronome/src/api/services/user"
 )
@@ -24,61 +26,95 @@ func AuthHandler(w http.ResponseWriter, r *http.Request) {
 
 	body, err := in.JSON(r, &tokenQuery)
 	if err != nil {
-		out.JSON(w, 400, err)
+		out.JSON(w, http.StatusBadRequest, factories.Error(err))
 		return
 	}
 
-	authQueryResult := core.ValidateJSON("auth", "authQuery", string(body))
+	authQueryResult, err := core.ValidateJSON("auth", "authQuery", string(body))
+	if err != nil {
+		out.JSON(w, http.StatusInternalServerError, factories.Error(err))
+		return
+	}
+
 	if !authQueryResult.Valid {
-		out.JSON(w, 422, authQueryResult.Errors)
+		out.JSON(w, http.StatusUnprocessableEntity, authQueryResult.Errors)
 		return
 	}
 
 	switch tokenQuery.Type {
 
 	case "bearer":
-		loginQueryResult := core.ValidateJSON("auth", "loginQuery", string(body))
-		if !loginQueryResult.Valid {
-			out.JSON(w, 422, loginQueryResult.Errors)
+		loginQueryResult, err := core.ValidateJSON("auth", "loginQuery", string(body))
+		if err != nil {
+			out.JSON(w, http.StatusInternalServerError, factories.Error(err))
 			return
 		}
 
-		user := userSrv.Login(tokenQuery.Username, tokenQuery.Password)
-		if user == nil {
-			out.Unauthorized(w)
+		if !loginQueryResult.Valid {
+			out.JSON(w, http.StatusUnprocessableEntity, loginQueryResult.Errors)
 			return
 		}
-		token := authSrv.BearerTokensFromUser(user)
-		out.JSON(w, 200, token)
+
+		user, err := userSrv.Login(tokenQuery.Username, tokenQuery.Password)
+		if err != nil {
+			out.JSON(w, http.StatusInternalServerError, factories.Error(err))
+			return
+		}
+
+		if user == nil {
+			out.JSON(w, http.StatusUnauthorized, factories.Error(err))
+			return
+		}
+
+		token, err := authSrv.BearerTokensFromUser(user)
+		if err != nil {
+			out.JSON(w, http.StatusInternalServerError, factories.Error(err))
+			return
+		}
+
+		out.JSON(w, http.StatusOK, token)
 
 	case "access":
-		accessQueryResult := core.ValidateJSON("auth", "accessQuery", string(body))
-		if !accessQueryResult.Valid {
-			out.JSON(w, 422, accessQueryResult.Errors)
+		accessQueryResult, err := core.ValidateJSON("auth", "accessQuery", string(body))
+		if err != nil {
+			out.JSON(w, http.StatusInternalServerError, factories.Error(err))
 			return
 		}
+
+		if !accessQueryResult.Valid {
+			out.JSON(w, http.StatusUnprocessableEntity, accessQueryResult.Errors)
+			return
+		}
+
 		token, err := authSrv.BearerTokensFromRefresh(tokenQuery.RefreshToken)
 		if err != nil {
-			out.Unauthorized(w)
+			out.JSON(w, http.StatusUnauthorized, factories.Error(err))
+			return
 		}
-		out.JSON(w, 200, token)
+
+		out.JSON(w, http.StatusOK, token)
 	}
 }
 
 // LogoutHandler endoint remove RefreshTokens
 func LogoutHandler(w http.ResponseWriter, r *http.Request) {
 
-	token := authSrv.GetToken(r.Header.Get("Authorization"))
-	if token == nil {
-		out.Unauthorized(w)
-		return
-	}
-
-	err := authSrv.RevokeRefreshTokenFromAccess(token)
+	token, err := authSrv.GetToken(r.Header.Get("Authorization"))
 	if err != nil {
-		out.JSON(w, 500, err.Error())
+		out.JSON(w, http.StatusInternalServerError, factories.Error(err))
 		return
 	}
 
-	out.JSON(w, 200, true)
+	if token == nil {
+		out.JSON(w, http.StatusUnauthorized, factories.Error(errors.New("Unauthorized")))
+		return
+	}
+
+	err = authSrv.RevokeRefreshTokenFromAccess(token)
+	if err != nil {
+		out.JSON(w, http.StatusInternalServerError, factories.Error(err))
+		return
+	}
+
+	out.JSON(w, http.StatusOK, true)
 }

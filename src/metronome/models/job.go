@@ -57,11 +57,11 @@ func (j *Job) FromKafka(msg *sarama.ConsumerMessage) error {
 }
 
 // ToJSON serialize a Task as JSON.
-func (j *Job) ToJSON() string {
+func (j *Job) ToJSON() ([]byte, error) {
 	out, err := json.Marshal(j)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
-	return string(out)
+	return out, nil
 }
