@@ -13,13 +13,13 @@
 package main
 
 import (
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/ovh/metronome/src/api/cmd"
 )
 
 func main() {
 	if err := cmd.RootCmd.Execute(); err != nil {
-		log.Panicf("%v", err)
+		log.WithError(err).Error("Could not execute the api")
 	}
 }

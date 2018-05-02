@@ -2,7 +2,7 @@ version: '2'
 services:
   # databases
   postgres:
-    image: postgres:9.6.1
+    image: postgres
     expose:
       - "5432"
     environment:
@@ -10,7 +10,7 @@ services:
       POSTGRES_PASSWORD: metropass
       POSTGRES_DB: metronome
   redis:
-    image: redis:3.2.6
+    image: redis
 
   # kafka
   zookeeper:

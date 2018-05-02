@@ -26,3 +26,10 @@ _testmain.go
 *.exe
 *.test
 *.bench
+
+# Packr generated files
+*-packr.go
+
+# coverage files
+coverage.txt
+*.coverprofile

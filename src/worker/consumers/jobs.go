@@ -8,9 +8,9 @@ import (
 	"time"
 
 	"github.com/Shopify/sarama"
-	log "github.com/Sirupsen/logrus"
-	saramaC "github.com/d33d33/sarama-cluster"
+	saramaC "github.com/bsm/sarama-cluster"
 	"github.com/prometheus/client_golang/prometheus"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 
 	"github.com/ovh/metronome/src/metronome/kafka"
@@ -133,19 +133,23 @@ func (jc *JobConsumer) Worker(id int) {
 				log.Printf("Closing worker %d", id)
 				return
 			}
-			jc.handleMsg(msg)
+			if err := jc.handleMsg(msg); err != nil {
+				log.
+					WithError(err).
+					WithFields(log.Fields{"id": id}).
+					Error("Could not handle the message")
+			}
 		}
 	}
 }
 
 // Handle message from Kafka.
 // Forward them as http POST.
-func (jc *JobConsumer) handleMsg(msg *sarama.ConsumerMessage) {
+func (jc *JobConsumer) handleMsg(msg *sarama.ConsumerMessage) error {
 	jc.jobCounter.WithLabelValues(strconv.Itoa(int(msg.Partition))).Inc()
 	var j models.Job
 	if err := j.FromKafka(msg); err != nil {
-		log.Error(err)
-		return
+		return err
 	}
 
 	start := time.Now()
@@ -179,13 +183,15 @@ func (jc *JobConsumer) handleMsg(msg *sarama.ConsumerMessage) {
 
 		res, err := http.PostForm(j.URN, v)
 		if err != nil {
-			log.Warn(err)
+			log.WithError(err).Warn("Could not post form")
 			s.State = models.Failed
 		} else if res.StatusCode < 200 || res.StatusCode >= 300 {
 			s.State = models.Failed
 		}
 		if err == nil {
-			res.Body.Close()
+			if err = res.Body.Close(); err != nil {
+				log.WithError(err).Warn("Could not close the response body")
+			}
 		}
 	}
 
@@ -202,5 +208,7 @@ func (jc *JobConsumer) handleMsg(msg *sarama.ConsumerMessage) {
 
 	if _, _, err := jc.producer.SendMessage(s.ToKafka()); err != nil {
 		log.Errorf("FAILED to send message: %s\n", err)
+		return err
 	}
+	return nil
 }

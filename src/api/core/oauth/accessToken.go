@@ -3,6 +3,7 @@ package oauth
 import (
 	"encoding/base64"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"time"
 
@@ -18,7 +19,7 @@ type AuthClaims struct {
 }
 
 // GenerateAccessToken return a new token.
-func GenerateAccessToken(userID string, roles []string, refreshToken string) string {
+func GenerateAccessToken(userID string, roles []string, refreshToken string) (string, error) {
 	claims := AuthClaims{
 		roles,
 		refreshToken,
@@ -28,24 +29,24 @@ func GenerateAccessToken(userID string, roles []string, refreshToken string) str
 			Subject:   userID,
 		},
 	}
-	token := jwt.NewWithClaims(jwt.SigningMethodHS512, claims)
 
+	token := jwt.NewWithClaims(jwt.SigningMethodHS512, claims)
 	key, err := hex.DecodeString(viper.GetString("token.key"))
 	if err != nil {
-		panic(err)
+		return "", err
 	}
 
 	tokenString, err := token.SignedString(key)
 	if err != nil {
-		panic(err)
+		return "", err
 	}
 
-	return tokenString
+	return tokenString, nil
 }
 
 // GetToken return a token from a token string.
 // Return nil if the token string is invalid or if the token as expired.
-func GetToken(tokenString string) *jwt.Token {
+func GetToken(tokenString string) (*jwt.Token, error) {
 	token, err := jwt.ParseWithClaims(tokenString, &AuthClaims{}, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
@@ -53,15 +54,20 @@ func GetToken(tokenString string) *jwt.Token {
 
 		key, err := hex.DecodeString(viper.GetString("token.key"))
 		if err != nil {
-			panic(err)
+			return nil, err
 		}
 		return key, nil
 	})
 
-	if err == nil && token.Valid {
-		return token
+	if err != nil {
+		return nil, err
 	}
-	return nil
+
+	if !token.Valid {
+		return nil, errors.New("Token is not valid")
+	}
+
+	return token, nil
 }
 
 // UserID return the user id from a token.
@@ -77,11 +83,11 @@ func Roles(token *jwt.Token) []string {
 }
 
 // RefreshToken return the refreshToken
-func RefreshToken(token *jwt.Token) string {
+func RefreshToken(token *jwt.Token) ([]byte, error) {
 	claims := token.Claims.(*AuthClaims)
 	refreshToken, err := base64.StdEncoding.DecodeString(claims.RefreshToken)
 	if err != nil {
-		panic("")
+		return nil, err
 	}
-	return string(refreshToken)
+	return refreshToken, nil
 }

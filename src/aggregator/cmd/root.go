@@ -4,7 +4,7 @@ import (
 	"os"
 	"os/signal"
 
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
@@ -12,14 +12,13 @@ import (
 	"github.com/ovh/metronome/src/metronome/metrics"
 )
 
-var cfgFile string
-var verbose bool
-
 // Aggregator init - define command line arguments.
 func init() {
 	cobra.OnInitialize(initConfig)
-	RootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file to use")
-	RootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "verbose output")
+
+	RootCmd.PersistentFlags().StringP("config", "", "", "config file to use")
+	RootCmd.PersistentFlags().BoolP("verbose", "v", false, "verbose output")
+
 	RootCmd.Flags().String("pg.addr", "127.0.0.1:5432", "postgres address")
 	RootCmd.Flags().String("pg.user", "metronome", "postgres user")
 	RootCmd.Flags().String("pg.password", "metropass", "postgres password")
@@ -28,14 +27,35 @@ func init() {
 	RootCmd.Flags().String("redis.addr", "127.0.0.1:6379", "redis address")
 	RootCmd.Flags().String("metrics.addr", "127.0.0.1:9100", "metrics address")
 
-	viper.BindPFlags(RootCmd.Flags())
+	if err := viper.BindPFlags(RootCmd.PersistentFlags()); err != nil {
+		log.WithError(err).Error("Could not bind persistent flags")
+	}
+
+	if err := viper.BindPFlags(RootCmd.Flags()); err != nil {
+		log.WithError(err).Error("Could not bind flags")
+	}
 }
 
 // Load config - initialize defaults and read config.
 func initConfig() {
-	if verbose {
+	if viper.GetBool("verbose") {
 		log.SetLevel(log.DebugLevel)
 	}
+
+	// Set defaults
+	viper.SetDefault("metrics.addr", ":9100")
+	viper.SetDefault("metrics.path", "/metrics")
+	viper.SetDefault("redis.pass", "")
+	viper.SetDefault("kafka.tls", false)
+	viper.SetDefault("kafka.topics.tasks", "tasks")
+	viper.SetDefault("kafka.topics.jobs", "jobs")
+	viper.SetDefault("kafka.topics.states", "states")
+	viper.SetDefault("kafka.groups.schedulers", "schedulers")
+	viper.SetDefault("kafka.groups.aggregators", "aggregators")
+	viper.SetDefault("kafka.groups.workers", "workers")
+	viper.SetDefault("worker.poolsize", 100)
+	viper.SetDefault("token.ttl", 3600)
+	viper.SetDefault("redis.pass", "")
 
 	// Bind environment variables
 	viper.SetEnvPrefix("mtragg")
@@ -67,6 +87,7 @@ func initConfig() {
 	}
 
 	// Load user defined config
+	cfgFile := viper.GetString("Config")
 	if cfgFile != "" {
 		viper.SetConfigFile(cfgFile)
 		err := viper.ReadInConfig()
@@ -89,12 +110,12 @@ Complete documentation is available at http://ovh.github.io/metronome`,
 
 		tc, err := consumers.NewTaskConsumer()
 		if err != nil {
-			log.Fatal(err)
+			log.WithError(err).Fatal("Could not start the task consumer")
 		}
 
 		sc, err := consumers.NewStateConsumer()
 		if err != nil {
-			log.Fatal(err)
+			log.WithError(err).Fatal("Could not start the state consumer")
 		}
 
 		log.Info("Started")
@@ -104,17 +125,14 @@ Complete documentation is available at http://ovh.github.io/metronome`,
 		signal.Notify(sigint, os.Interrupt)
 
 		<-sigint
+
 		log.Info("Shuting down")
-		errT := tc.Close()
-
-		errS := sc.Close()
-
-		if errT != nil {
-			log.Fatal(errT)
+		if err := sc.Close(); err != nil {
+			log.WithError(err).Error("Could not stop gracefully the state consumer")
 		}
 
-		if errS != nil {
-			log.Fatal(errS)
+		if err := tc.Close(); err != nil {
+			log.WithError(err).Error("Could not stop gracefully the task consumer")
 		}
 	},
 }

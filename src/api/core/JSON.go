@@ -21,28 +21,43 @@ type JSONValidationResult struct {
 
 // ValidateJSON check a JSON string against a JSON schema.
 // See: http://json-schema.org/
-func ValidateJSON(root, schema, input string) *JSONValidationResult {
+func ValidateJSON(root, schema, input string) (*JSONValidationResult, error) {
 	var f interface{}
-	if err := json.Unmarshal(MustAsset(root+"/schema/"+schema+".json"), &f); err != nil {
-		panic(err)
+	box, err := Assets(root)
+	if err != nil {
+		return nil, err
 	}
+
+	asset, err := box.MustBytes(schema + ".json")
+	if err != nil {
+		return nil, err
+	}
+
+	if err = json.Unmarshal(asset, &f); err != nil {
+		return nil, err
+	}
+
 	s := f.(map[string]interface{})
-	if err := json.Unmarshal(MustAsset(root+"/schema/definitions.json"), &f); err != nil {
-		panic(err)
+	definitions, err := box.MustBytes("definitions.json")
+	if err != nil {
+		return nil, err
 	}
+
+	if err = json.Unmarshal(definitions, &f); err != nil {
+		return nil, err
+	}
+
 	defs := f.(map[string]interface{})
 	s["definitions"] = defs
 
 	schemaLoader := gojsonschema.NewGoLoader(s)
 	objectLoader := gojsonschema.NewStringLoader(input)
-
 	result, err := gojsonschema.Validate(schemaLoader, objectLoader)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	r := JSONValidationResult{}
-
 	r.Valid = result.Valid()
 
 	var errs []JSONSchemaErr
@@ -53,7 +68,7 @@ func ValidateJSON(root, schema, input string) *JSONValidationResult {
 			err.Description(),
 		})
 	}
-	r.Errors = errs
 
-	return &r
+	r.Errors = errs
+	return &r, nil
 }

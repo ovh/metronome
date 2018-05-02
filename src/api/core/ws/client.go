@@ -3,8 +3,8 @@ package ws
 import (
 	"time"
 
-	log "github.com/Sirupsen/logrus"
 	"github.com/gorilla/websocket"
+	log "github.com/sirupsen/logrus"
 )
 
 const (
@@ -39,8 +39,17 @@ func NewClient(conn *websocket.Conn) *Client {
 		send:    make(chan string, 256),
 	}
 
-	go c.readPump()
-	go c.writePump()
+	go func() {
+		if err := c.readPump(); err != nil {
+			log.WithError(err).Error("Could not read from the pump")
+		}
+	}()
+
+	go func() {
+		if err := c.writePump(); err != nil {
+			log.WithError(err).Error("Could not write in the pump")
+		}
+	}()
 
 	return c
 }
@@ -61,10 +70,15 @@ func (c *Client) Send(msg string) {
 }
 
 // readPump pumps messages from the websocket connection.
-func (c *Client) readPump() {
+func (c *Client) readPump() error {
 	c.conn.SetReadLimit(maxMessageSize)
-	c.conn.SetReadDeadline(time.Now().Add(pongWait))
-	c.conn.SetPongHandler(func(string) error { c.conn.SetReadDeadline(time.Now().Add(pongWait)); return nil })
+	if err := c.conn.SetReadDeadline(time.Now().Add(pongWait)); err != nil {
+		return err
+	}
+
+	c.conn.SetPongHandler(func(string) error {
+		return c.conn.SetReadDeadline(time.Now().Add(pongWait))
+	})
 
 	for {
 		mt, message, err := c.conn.ReadMessage()
@@ -73,7 +87,7 @@ func (c *Client) readPump() {
 				log.Warnf("WS error: %v", err)
 			}
 			close(c.receive)
-			break
+			return err
 		}
 
 		if mt == websocket.TextMessage {
@@ -83,29 +97,37 @@ func (c *Client) readPump() {
 }
 
 // writePump pumps messages to the websocket connection.
-func (c *Client) writePump() {
+func (c *Client) writePump() error {
 	ticker := time.NewTicker(pingPeriod)
 	defer func() {
 		ticker.Stop()
-		c.conn.Close()
+		if err := c.conn.Close(); err != nil {
+			log.WithError(err).Error("Could not gracefully close the websocket")
+		}
 	}()
+
 	for {
 		select {
 		case message, ok := <-c.send:
-			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
-			if !ok {
-				c.conn.WriteMessage(websocket.CloseMessage, []byte{})
-				return
+			if err := c.conn.SetWriteDeadline(time.Now().Add(writeWait)); err != nil {
+				return err
 			}
 
-			err := c.conn.WriteMessage(websocket.TextMessage, []byte(message))
-			if err != nil {
-				return
+			if !ok {
+				return c.conn.WriteMessage(websocket.CloseMessage, []byte{})
 			}
+
+			if err := c.conn.WriteMessage(websocket.TextMessage, []byte(message)); err != nil {
+				return err
+			}
+
 		case <-ticker.C:
-			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
+			if err := c.conn.SetWriteDeadline(time.Now().Add(writeWait)); err != nil {
+				return err
+			}
+
 			if err := c.conn.WriteMessage(websocket.PingMessage, []byte{}); err != nil {
-				return
+				return err
 			}
 		}
 	}

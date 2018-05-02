@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
 	"github.com/ovh/metronome/src/metronome/pg"
@@ -20,20 +20,32 @@ var initDatabaseCmd = &cobra.Command{
 		log.Info("Initializing database schema")
 
 		database := pg.DB()
+		assets := []string{
+			"extensions.sql",
+			"users.sql",
+			"tasks.sql",
+			"tokens.sql",
+		}
 
-		if _, err := database.Exec(string(pg.MustAsset("extensions.sql"))); err != nil {
-			log.Errorf("Failed to setup extensions: %v", err)
-		}
-		if _, err := database.Exec(string(pg.MustAsset("users.sql"))); err != nil {
-			log.Errorf("Failed to setup users table: %v", err)
-		}
-		if _, err := database.Exec(string(pg.MustAsset("tasks.sql"))); err != nil {
-			log.Errorf("Failed to setup tasks table: %v", err)
-		}
-		if _, err := database.Exec(string(pg.MustAsset("tokens.sql"))); err != nil {
-			log.Errorf("Failed to setup tokens table: %v", err)
+		for _, asset := range assets {
+			content, err := pg.Assets().MustString(asset)
+			if err != nil {
+				log.WithError(err).WithFields(log.Fields{
+					"asset": asset,
+				}).Error("Cannot found the asset")
+				continue
+			}
+
+			if _, err := database.Exec(content); err != nil {
+				log.WithError(err).WithFields(log.Fields{
+					"asset": asset,
+				}).Error("Failed to setup table")
+			}
 		}
 
 		log.Info("Done")
+		if err := database.Close(); err != nil {
+			log.WithError(err).Error("Could not gracefully close the connection to the database")
+		}
 	},
 }

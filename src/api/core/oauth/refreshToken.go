@@ -1,37 +1,18 @@
 package oauth
 
 import (
-	"bytes"
-	"crypto/rand"
-	"fmt"
-	"time"
+	"encoding/base64"
 
 	"github.com/ovh/metronome/src/api/models"
-	"github.com/ovh/metronome/src/metronome/core"
+	uuid "github.com/satori/go.uuid"
 )
 
 // GenerateRefreshToken returns an Token
-func GenerateRefreshToken(userID string, roles []string, typeToken string) (token *models.Token) {
-
-	var salt string
-	b := make([]byte, 16)
-	_, err := rand.Read(b)
-	if err != nil {
-		panic("error reading Rand()")
-	}
-	// base 16, lower-case, two characters per byte
-	salt = fmt.Sprintf("%x", b)
-
-	// plaintext is composed of userID, a random salt and the timestamp
-	var plaintext bytes.Buffer
-	plaintext.WriteString(userID)
-	plaintext.WriteString(salt)
-	plaintext.WriteString(string(time.Now().Unix()))
-
+func GenerateRefreshToken(userID string, roles []string) (*models.Token, error) {
 	return &models.Token{
-		Token:  core.Sha256(plaintext.String()),
+		Token:  base64.StdEncoding.EncodeToString(uuid.NewV4().Bytes()),
 		UserID: userID,
 		Roles:  roles,
-		Type:   typeToken,
-	}
+		Type:   "refresh",
+	}, nil
 }

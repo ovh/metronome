@@ -2,9 +2,11 @@ package cmd
 
 import (
 	"net/http"
+	"os"
+	"os/signal"
 
-	log "github.com/Sirupsen/logrus"
 	"github.com/rs/cors"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/urfave/negroni"
@@ -12,35 +14,52 @@ import (
 	"github.com/ovh/metronome/src/api/core"
 	"github.com/ovh/metronome/src/api/routers"
 	"github.com/ovh/metronome/src/metronome/metrics"
+	"github.com/ovh/metronome/src/metronome/pg"
 )
-
-var cfgFile string
-var verbose bool
 
 func init() {
 	cobra.OnInitialize(initConfig)
-	RootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file to use")
-	RootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "verbose output")
-	RootCmd.Flags().StringP("api.http.listen", "l", "0.0.0.0:8080", "api listen addresse")
+
+	RootCmd.PersistentFlags().StringP("config", "", "", "config file to use")
+	RootCmd.PersistentFlags().BoolP("verbose", "v", false, "verbose output")
 	RootCmd.PersistentFlags().String("pg.addr", "127.0.0.1:5432", "postgres address")
 	RootCmd.PersistentFlags().String("pg.user", "metronome", "postgres user")
 	RootCmd.PersistentFlags().String("pg.password", "metropass", "postgres password")
 	RootCmd.PersistentFlags().String("pg.database", "metronome", "postgres database")
+
+	RootCmd.Flags().StringP("api.http.listen", "l", "0.0.0.0:8080", "api listen addresse")
 	RootCmd.Flags().StringSlice("kafka.brokers", []string{"localhost:9092"}, "kafka brokers address")
 	RootCmd.Flags().String("redis.addr", "127.0.0.1:6379", "redis address")
 	RootCmd.Flags().String("metrics.addr", "127.0.0.1:9100", "metrics address")
 
-	viper.BindPFlags(RootCmd.PersistentFlags())
-	viper.BindPFlags(RootCmd.Flags())
+	if err := viper.BindPFlags(RootCmd.PersistentFlags()); err != nil {
+		log.WithError(err).Error("Could not bind persitent flags")
+	}
+
+	if err := viper.BindPFlags(RootCmd.Flags()); err != nil {
+		log.WithError(err).Error("Could not bind flags")
+	}
 }
 
 func initConfig() {
-	if verbose {
+	if viper.GetBool("verbose") {
 		log.SetLevel(log.DebugLevel)
 	}
 
-	// Defaults
+	// Set defaults
+	viper.SetDefault("metrics.addr", ":9100")
+	viper.SetDefault("metrics.path", "/metrics")
+	viper.SetDefault("redis.pass", "")
+	viper.SetDefault("kafka.tls", false)
+	viper.SetDefault("kafka.topics.tasks", "tasks")
+	viper.SetDefault("kafka.topics.jobs", "jobs")
+	viper.SetDefault("kafka.topics.states", "states")
+	viper.SetDefault("kafka.groups.schedulers", "schedulers")
+	viper.SetDefault("kafka.groups.aggregators", "aggregators")
+	viper.SetDefault("kafka.groups.workers", "workers")
+	viper.SetDefault("worker.poolsize", 100)
 	viper.SetDefault("token.ttl", 3600)
+	viper.SetDefault("redis.pass", "")
 
 	// Bind environment variables
 	viper.SetEnvPrefix("mtrapi")
@@ -72,6 +91,7 @@ func initConfig() {
 	}
 
 	// Load user defined config
+	cfgFile := viper.GetString("config")
 	if cfgFile != "" {
 		viper.SetConfigFile(cfgFile)
 		err := viper.ReadInConfig()
@@ -95,24 +115,24 @@ Complete documentation is available at http://ovh.github.io/metronome`,
 	Run: func(cmd *cobra.Command, args []string) {
 		log.Info("Metronome API starting")
 
-		metrics.Serve()
-
 		n := negroni.New()
 
 		// Log request
 		logger := &negroni.Logger{
-			core.RequestLogger{
+			ALogger: core.RequestLogger{
 				LogType: "access",
 				Level:   log.InfoLevel,
 			},
 		}
+		logger.SetDateFormat(negroni.LoggerDefaultDateFormat)
+		logger.SetFormat(negroni.LoggerDefaultFormat)
 		n.Use(logger)
 
 		// Handle handlers panic
 		recovery := negroni.NewRecovery()
 		recovery.Logger = core.RequestLogger{
-			"recovery",
-			log.ErrorLevel,
+			LogType: "recovery",
+			Level:   log.ErrorLevel,
 		}
 		n.Use(recovery)
 
@@ -126,9 +146,34 @@ Complete documentation is available at http://ovh.github.io/metronome`,
 		router := routers.InitRoutes()
 		n.UseHandler(router)
 
-		log.Info("Metronome API started")
-		log.Infof("Listen %s", viper.GetString("api.http.listen"))
+		server := &http.Server{
+			Addr:    viper.GetString("api.http.listen"),
+			Handler: n,
+		}
 
-		log.Fatal(http.ListenAndServe(viper.GetString("api.http.listen"), n))
+		// Serve metrics
+		metrics.Serve()
+
+		go func() {
+			log.Info("Metronome API started")
+			log.Infof("Listen %s", viper.GetString("api.http.listen"))
+			if err := server.ListenAndServe(); err != nil {
+				log.WithError(err).Error("Could not start the server")
+			}
+		}()
+
+		sigint := make(chan os.Signal, 1)
+		signal.Notify(sigint, os.Interrupt)
+
+		<-sigint
+
+		if err := server.Close(); err != nil {
+			log.WithError(err).Error("Could not stop gracefully the server")
+		}
+
+		database := pg.DB()
+		if err := database.Close(); err != nil {
+			log.WithError(err).Error("Could not stop gracefully close the connection to the database")
+		}
 	},
 }

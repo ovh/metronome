@@ -4,9 +4,9 @@ import (
 	"strconv"
 
 	"github.com/Shopify/sarama"
-	log "github.com/Sirupsen/logrus"
-	saramaC "github.com/d33d33/sarama-cluster"
+	saramaC "github.com/bsm/sarama-cluster"
 	"github.com/prometheus/client_golang/prometheus"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 
 	"github.com/ovh/metronome/src/metronome/kafka"
@@ -82,7 +82,9 @@ func NewStateConsumer() (*StateConsumer, error) {
 				if !ok { // shuting down
 					return
 				}
-				sc.handleMsg(msg)
+				if err := sc.handleMsg(msg); err != nil {
+					log.WithError(err).Error("Could not handle the message")
+				}
 			}
 		}
 	}()
@@ -97,23 +99,29 @@ func (sc *StateConsumer) Close() error {
 
 // Handle message from Kafka.
 // Apply updates to the database.
-func (sc *StateConsumer) handleMsg(msg *sarama.ConsumerMessage) {
+func (sc *StateConsumer) handleMsg(msg *sarama.ConsumerMessage) error {
 	sc.stateCounter.WithLabelValues(strconv.Itoa(int(msg.Partition))).Inc()
 	var s models.State
 	if err := s.FromKafka(msg); err != nil {
 		sc.stateUnprocessableCounter.WithLabelValues(strconv.Itoa(int(msg.Partition))).Inc()
-		log.Error(err)
-		return
+		return err
 	}
 
 	log.Infof("UPDATE state: %s", s.TaskGUID)
+	body, err := s.ToJSON()
+	if err != nil {
+		return err
+	}
 
-	if err := redis.DB().HSet(s.UserID, s.TaskGUID, s.ToJSON()).Err(); err != nil {
-		panic(err)
+	if err := redis.DB().HSet(s.UserID, s.TaskGUID, string(body)).Err(); err != nil {
+		return err
 	}
+
 	sc.stateProcessedCounter.WithLabelValues(strconv.Itoa(int(msg.Partition))).Inc()
-	if err := redis.DB().PublishTopic(s.UserID, "state", s.ToJSON()).Err(); err != nil {
+	if err := redis.DB().PublishTopic(s.UserID, "state", string(body)).Err(); err != nil {
 		sc.statePublishErrorCounter.WithLabelValues(strconv.Itoa(int(msg.Partition))).Inc()
-		log.Error(err)
+		return err
 	}
+
+	return nil
 }

@@ -6,7 +6,7 @@ import (
 
 // User holds user attributes.
 type User struct {
-	ID        string    `json:"id"sql:"user_id,pk"`
+	ID        string    `json:"id" sql:"user_id,pk"`
 	Name      string    `json:"name"`
 	Password  string    `json:"password,omitempty"`
 	Roles     []string  `json:"roles,omitempty"`

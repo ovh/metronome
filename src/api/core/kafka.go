@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/Shopify/sarama"
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 
 	"github.com/ovh/metronome/src/metronome/kafka"
@@ -22,9 +22,9 @@ var once sync.Once
 
 // GetKafka return the kafka instance.
 func GetKafka() *Kafka {
-	brokers := viper.GetStringSlice("kafka.brokers")
-
 	once.Do(func() {
+		brokers := viper.GetStringSlice("kafka.brokers")
+
 		config := kafka.NewConfig()
 		config.ClientID = "metronome-api"
 		config.Producer.RequiredAcks = sarama.WaitForAll
@@ -37,12 +37,10 @@ func GetKafka() *Kafka {
 
 		producer, err := sarama.NewSyncProducer(brokers, config)
 		if err != nil {
-			panic(err)
+			log.WithError(err).Fatal("Could not connect to kafka")
 		}
 
-		k = &Kafka{
-			Producer: producer,
-		}
+		k = &Kafka{Producer: producer}
 	})
 
 	return k
@@ -50,9 +48,5 @@ func GetKafka() *Kafka {
 
 // Close the producer.
 func (k *Kafka) Close() error {
-	if err := k.Producer.Close(); err != nil {
-		log.Error("Failed to shut down producer cleanly", err)
-	}
-
-	return nil
+	return k.Producer.Close()
 }

@@ -1,6 +1,7 @@
-package taskCtrl
+package taskctrl
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -8,6 +9,7 @@ import (
 	"github.com/ovh/metronome/src/api/core"
 	"github.com/ovh/metronome/src/api/core/io/in"
 	"github.com/ovh/metronome/src/api/core/io/out"
+	"github.com/ovh/metronome/src/api/factories"
 	authSrv "github.com/ovh/metronome/src/api/services/auth"
 	taskSrv "github.com/ovh/metronome/src/api/services/task"
 	"github.com/ovh/metronome/src/metronome/models"
@@ -15,49 +17,64 @@ import (
 
 // Create endoint handle task creation.
 func Create(w http.ResponseWriter, r *http.Request) {
-	token := authSrv.GetToken(r.Header.Get("Authorization"))
+	token, err := authSrv.GetToken(r.Header.Get("Authorization"))
+	if err != nil {
+		out.JSON(w, http.StatusInternalServerError, factories.Error(err))
+		return
+	}
+
 	if token == nil {
-		out.Unauthorized(w)
+		out.JSON(w, http.StatusUnauthorized, factories.Error(errors.New("Unauthorized")))
 		return
 	}
 
 	var task models.Task
-
 	body, err := in.JSON(r, &task)
 	if err != nil {
-		out.JSON(w, 400, err)
+		out.JSON(w, http.StatusBadRequest, factories.Error(err))
 		return
 	}
 
 	// schedule regex: https://regex101.com/r/vyBrRd/3
-	result := core.ValidateJSON("task", "create", string(body))
+	result, err := core.ValidateJSON("task", "create", string(body))
+	if err != nil {
+		out.JSON(w, http.StatusInternalServerError, factories.Error(err))
+		return
+	}
+
 	if !result.Valid {
-		out.JSON(w, 422, result.Errors)
+		out.JSON(w, http.StatusUnprocessableEntity, result.Errors)
 		return
 	}
 
 	task.UserID = authSrv.UserID(token)
-
 	success := taskSrv.Create(&task)
 	if !success {
-		out.BadGateway(w)
+		out.JSON(w, http.StatusBadGateway, factories.Error(errors.New("Bad gateway")))
 		return
 	}
-	out.JSON(w, 200, task)
+
+	out.JSON(w, http.StatusOK, task)
 }
 
 // Delete endoint handle task deletion.
 func Delete(w http.ResponseWriter, r *http.Request) {
-	token := authSrv.GetToken(r.Header.Get("Authorization"))
+	token, err := authSrv.GetToken(r.Header.Get("Authorization"))
+	if err != nil {
+		out.JSON(w, http.StatusInternalServerError, factories.Error(err))
+		return
+	}
+
 	if token == nil {
-		out.Unauthorized(w)
+		out.JSON(w, http.StatusUnauthorized, factories.Error(errors.New("Unauthorized")))
 		return
 	}
 
 	success := taskSrv.Delete(mux.Vars(r)["id"], authSrv.UserID(token))
 	if !success {
-		out.BadGateway(w)
+		out.JSON(w, http.StatusBadGateway, factories.Error(errors.New("Bad gateway")))
 		return
 	}
-	out.Success(w)
+
+	w.WriteHeader(http.StatusOK)
 }

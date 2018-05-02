@@ -1,6 +1,7 @@
 package core
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"strconv"
@@ -32,9 +33,9 @@ type Entry struct {
 
 // NewEntry return a new entry.
 func NewEntry(task models.Task) (*Entry, error) {
-	segs := strings.Split(string(task.Schedule), "/")
+	segs := strings.Split(task.Schedule, "/")
 	if len(segs) != 4 {
-		return nil, fmt.Errorf("Bad schedule %v", task.Schedule)
+		return nil, fmt.Errorf("Bad schedule %s", task.Schedule)
 	}
 
 	start, err := time.Parse(time.RFC3339, segs[1])
@@ -48,7 +49,7 @@ func NewEntry(task models.Task) (*Entry, error) {
 	if len(rS) > 0 {
 		parsed, err := strconv.Atoi(rS)
 		if err != nil {
-			return nil, fmt.Errorf("Bad repeat %v", task.Schedule)
+			return nil, fmt.Errorf("Bad repeat %s", task.Schedule)
 		}
 		r = int64(parsed)
 	}
@@ -179,26 +180,25 @@ func (e *Entry) initDateMode(now time.Time) int64 {
 
 // Plan the next execution time.
 // Return true if planning as been updated.
-func (e *Entry) Plan(now time.Time) bool {
+func (e *Entry) Plan(now time.Time) (bool, error) {
 	if !e.initialized {
-		panic("Unitialized entry. Please call init before")
+		return false, errors.New("Unitialized entry. Please call init before")
 	}
 
 	if e.next >= now.Unix() {
-		return false
+		return false, nil
 	}
 
 	if e.next < 0 {
-		return false
+		return false, nil
 	}
 
 	if e.repeat >= 0 && e.planned > e.repeat {
 		e.next = -1
-		return false
+		return false, nil
 	}
 
 	e.planned++
-
 	if e.timeMode {
 		e.next += int64(e.period)
 	} else {
@@ -217,5 +217,5 @@ func (e *Entry) Plan(now time.Time) bool {
 		e.next = next.Unix()
 	}
 
-	return true
+	return true, nil
 }

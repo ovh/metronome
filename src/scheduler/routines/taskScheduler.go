@@ -7,8 +7,8 @@ import (
 	"sync"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
 	"github.com/prometheus/client_golang/prometheus"
+	log "github.com/sirupsen/logrus"
 	redisV5 "gopkg.in/redis.v5"
 
 	"github.com/ovh/metronome/src/metronome/models"
@@ -48,7 +48,7 @@ type TaskScheduler struct {
 }
 
 // NewTaskScheduler return a new task scheduler
-func NewTaskScheduler(partition int32, tasks <-chan models.Task) *TaskScheduler {
+func NewTaskScheduler(partition int32, tasks <-chan models.Task) (*TaskScheduler, error) {
 	const buffSize = 20
 
 	ts := &TaskScheduler{
@@ -87,8 +87,12 @@ func NewTaskScheduler(partition int32, tasks <-chan models.Task) *TaskScheduler 
 	prometheus.MustRegister(ts.planCounter)
 
 	// jobs producer
-	ts.jobProducer = NewJobProducer(ts.jobs)
+	jobProducer, err := NewJobProducer(ts.jobs)
+	if err != nil {
+		return nil, err
+	}
 
+	ts.jobProducer = jobProducer
 	go func() {
 		defer ts.alive.Done()
 		for {
@@ -136,11 +140,11 @@ func NewTaskScheduler(partition int32, tasks <-chan models.Task) *TaskScheduler 
 		}
 	}()
 
-	return ts
+	return ts, nil
 }
 
 // Start task scheduling
-func (ts *TaskScheduler) Start() {
+func (ts *TaskScheduler) Start() error {
 	ts.entriesMutex.Lock()
 
 	defer func() {
@@ -153,17 +157,15 @@ func (ts *TaskScheduler) Start() {
 	val, err := redis.DB().Get(strconv.Itoa(int(ts.partition))).Result()
 	if err == redisV5.Nil {
 		// no state save
-		return
+		return nil
 	} else if err != nil {
-		log.Error(err)
-		return
+		return err
 	}
 
 	var state state
 	err = json.Unmarshal([]byte(val), &state)
 	if err != nil {
-		log.Error(err)
-		return
+		return err
 	}
 
 	log.Infof("Scheduler %v restored state %v", ts.partition, state)
@@ -177,7 +179,9 @@ func (ts *TaskScheduler) Start() {
 	if len(state.Indexes) > 0 {
 
 		jobs := make(chan models.Job)
-		NewJobComsumer(state.Indexes, jobs)
+		if err := NewJobComsumer(state.Indexes, jobs); err != nil {
+			return err
+		}
 
 	jobsLoader:
 		for {
@@ -196,9 +200,14 @@ func (ts *TaskScheduler) Start() {
 
 	// Plan
 	for guid, e := range ts.entries {
-		jobs := planEntryInBatch(e, ts.nextExec.Value.(batch).at)
+		jobs, err := planEntryInBatch(e, ts.nextExec.Value.(batch).at)
+		if err != nil {
+			return err
+		}
 		ts.nextExec.Value.(batch).jobs[guid] = jobs
 	}
+
+	return nil
 }
 
 // stop the scheduler
@@ -227,7 +236,7 @@ func (ts *TaskScheduler) Jobs() <-chan []models.Job {
 }
 
 // Handle incomming task
-func (ts *TaskScheduler) handleTask(t models.Task) {
+func (ts *TaskScheduler) handleTask(t models.Task) error {
 	if ts.entries[t.GUID] != nil && t.Schedule == "" {
 		log.Infof("DELETE task: %s", t.GUID)
 		ts.taskGauge.Dec()
@@ -241,7 +250,7 @@ func (ts *TaskScheduler) handleTask(t models.Task) {
 
 			c = c.Next()
 		}
-		return
+		return nil
 	}
 
 	taskUpdate := false
@@ -249,7 +258,7 @@ func (ts *TaskScheduler) handleTask(t models.Task) {
 		taskUpdate = true
 		if ts.entries[t.GUID].SameAs(t) {
 			log.Infof("NOP task: %s", t.GUID)
-			return
+			return nil
 		}
 
 		// Clear schedule execution on task update
@@ -272,8 +281,8 @@ func (ts *TaskScheduler) handleTask(t models.Task) {
 	// Update entries
 	e, err := core.NewEntry(t)
 	if err != nil {
-		log.Errorf("unprocessable task(%v)", t)
-		return
+		log.WithError(err).Errorf("unprocessable task(%v)", t)
+		return err
 	}
 	ts.entries[t.GUID] = e
 
@@ -282,7 +291,10 @@ func (ts *TaskScheduler) handleTask(t models.Task) {
 	e.Init(c.Value.(batch).at)
 	for i := 0; i < c.Len(); i++ {
 		if c.Value != nil {
-			jobs := planEntryInBatch(e, c.Value.(batch).at)
+			jobs, err := planEntryInBatch(e, c.Value.(batch).at)
+			if err != nil {
+				return err
+			}
 
 			if len(jobs) > 0 {
 				c.Value.(batch).jobs[t.GUID] = jobs
@@ -291,6 +303,8 @@ func (ts *TaskScheduler) handleTask(t models.Task) {
 
 		c = c.Next()
 	}
+
+	return nil
 }
 
 // Dispatch jobs executions
@@ -349,12 +363,12 @@ func (ts *TaskScheduler) handleDispatch() {
 }
 
 // Plan next executions
-func (ts *TaskScheduler) handlePlanning() {
+func (ts *TaskScheduler) handlePlanning() error {
 	if ts.plan.Next().Value != nil {
-		return
+		return nil
 	}
-	ts.plan = ts.plan.Next()
 
+	ts.plan = ts.plan.Next()
 	ts.now = ts.now.Add(1 * time.Second)
 	if ts.now.Before(time.Now()) {
 		ts.now = time.Now().UTC()
@@ -366,7 +380,10 @@ func (ts *TaskScheduler) handlePlanning() {
 	}
 
 	for k := range ts.entries {
-		jobs := planEntryInBatch(ts.entries[k], ts.now)
+		jobs, err := planEntryInBatch(ts.entries[k], ts.now)
+		if err != nil {
+			return err
+		}
 
 		if len(jobs) > 0 {
 			ts.plan.Value.(batch).jobs[k] = jobs
@@ -381,16 +398,27 @@ func (ts *TaskScheduler) handlePlanning() {
 		default:
 		}
 	}
+
+	return nil
 }
 
-func planEntryInBatch(entry *core.Entry, at time.Time) []models.Job {
+func planEntryInBatch(entry *core.Entry, at time.Time) ([]models.Job, error) {
 	jobs := make([]models.Job, 0)
-	entry.Plan(at)
+	_, err := entry.Plan(at)
+	if err != nil {
+		return nil, err
+	}
+
 	for entry.Next() > 0 && entry.Next() <= at.Unix() {
 		jobs = append(jobs, models.Job{GUID: entry.GUID(), UserID: entry.UserID(), At: entry.Next(), Epsilon: entry.Epsilon(), URN: entry.URN()})
-		if !entry.Plan(at) {
+		plan, err := entry.Plan(at)
+		if err != nil {
+			return nil, err
+		}
+
+		if !plan {
 			break
 		}
 	}
-	return jobs
+	return jobs, nil
 }

@@ -1,11 +1,13 @@
-package wsCtrl
+package wsctrl
 
 import (
+	"errors"
 	"net/http"
 
-	log "github.com/Sirupsen/logrus"
 	"github.com/gorilla/websocket"
 	"github.com/ovh/metronome/src/api/core/ws"
+	"github.com/ovh/metronome/src/api/factories"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/ovh/metronome/src/api/core/io/out"
 	authSrv "github.com/ovh/metronome/src/api/services/auth"
@@ -22,7 +24,8 @@ var upgrader = websocket.Upgrader{
 func Join(w http.ResponseWriter, r *http.Request) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Error(err)
+		log.WithError(err).Error("Could not upgrade the http request to websocket")
+		out.JSON(w, http.StatusInternalServerError, factories.Error(err))
 		return
 	}
 	client := ws.NewClient(conn)
@@ -34,16 +37,21 @@ func Join(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token := authSrv.GetToken(msg)
+	token, err := authSrv.GetToken(msg)
+	if err != nil {
+		out.JSON(w, http.StatusInternalServerError, factories.Error(err))
+		return
+	}
+
 	if token == nil {
-		out.Unauthorized(w)
+		out.JSON(w, http.StatusUnauthorized, factories.Error(errors.New("Unauthorized")))
 		return
 	}
 
 	pubsub, err := redis.DB().Subscribe(authSrv.UserID(token))
 	if err != nil {
-		log.Error(err)
-		out.BadGateway(w)
+		log.WithError(err).Error("Could not subscribe to redis")
+		out.JSON(w, http.StatusInternalServerError, factories.Error(err))
 		return
 	}
 	defer pubsub.Close()
@@ -67,7 +75,7 @@ func Join(w http.ResponseWriter, r *http.Request) {
 		select {
 		case _, ok := <-client.Messages():
 			if !ok { // shuting down
-				out.Success(w)
+				w.WriteHeader(http.StatusOK)
 				return
 			}
 
@@ -75,7 +83,7 @@ func Join(w http.ResponseWriter, r *http.Request) {
 			client.Send(msg)
 
 		case <-kill:
-			out.BadGateway(w)
+			out.JSON(w, http.StatusBadGateway, factories.Error(errors.New("Bad gateway")))
 			return
 		}
 	}

@@ -1,8 +1,9 @@
-// Package authSrv handle authorization token operations.
-package authSrv
+// Package authsrv handle authorization token operations.
+package authsrv
 
 import (
-	"encoding/base64"
+	"errors"
+	"strings"
 
 	jwt "github.com/dgrijalva/jwt-go"
 
@@ -13,33 +14,40 @@ import (
 )
 
 // BearerTokensFromUser return both new Access and Refresh tokens.
-func BearerTokensFromUser(user *models.User) *models.BearerToken {
+func BearerTokensFromUser(user *models.User) (*models.BearerToken, error) {
 	db := pg.DB()
 
-	refreshToken := oauth.GenerateRefreshToken(user.ID, user.Roles, "refresh")
-
-	// We need to forward the "plain" refreshToken to the client
-	// and store an encrypted version into our DB
-	refreshTokenPlain := refreshToken.Token
-	refreshToken.Token = core.PBKDF2(refreshToken.Token, core.Sha256(user.ID))
-
-	res, err := db.Model(&refreshToken).Insert()
-	if err != nil || res.RowsAffected() == 0 {
-		panic(err)
+	refreshToken, err := oauth.GenerateRefreshToken(user.ID, user.Roles)
+	if err != nil {
+		return nil, err
 	}
 
-	accessToken := oauth.GenerateAccessToken(user.ID, user.Roles, refreshTokenPlain)
+	// We need to forward the refresh token to the client
+	// and store an encrypted version into our DB
+	res, err := db.Model(refreshToken).Insert()
+	if err != nil || res.RowsAffected() == 0 {
+		return nil, err
+	}
+
+	accessToken, err := oauth.GenerateAccessToken(user.ID, user.Roles, refreshToken.Token)
+	if err != nil {
+		return nil, err
+	}
 
 	return &models.BearerToken{
 		AccessToken:  accessToken,
-		RefreshToken: refreshTokenPlain,
+		RefreshToken: refreshToken.Token,
 		Type:         "bearer",
-	}
+	}, nil
 }
 
 // GetToken return a token from a accessToken string.
 // Return nil if the accessToken string is invalid or if the token as expired.
-func GetToken(tokenString string) *jwt.Token {
+func GetToken(tokenString string) (*jwt.Token, error) {
+	if strings.HasPrefix(tokenString, "Bearer ") {
+		return oauth.GetToken(tokenString[7:])
+	}
+
 	return oauth.GetToken(tokenString)
 }
 
@@ -65,39 +73,38 @@ func HasRole(role string, token *jwt.Token) bool {
 
 // getRefreshToken return a RefreshToken from PG
 // Returns nil if empty
-func getRefreshTokenFromDB(prettyRefreshToken string) (*models.Token, error) {
+func getRefreshTokenFromDB(refreshToken string) (*models.Token, error) {
 	db := pg.DB()
 
-	// We need to decode refreshToken
-	refreshToken, err := base64.StdEncoding.DecodeString(prettyRefreshToken)
-	if err != nil {
-		panic("")
-	}
-
-	var token models.Token
-	err = db.Model(&token).Where("token = ? AND type = 'refresh'", string(refreshToken)).Select()
+	token := new(models.Token)
+	err := db.Model(token).Where("token = ? AND type = 'refresh'", refreshToken).Select()
 	if err != nil {
 		return nil, err
 	}
-	return &token, nil
+
+	return token, nil
 }
 
 // BearerTokensFromRefresh return a new AccessToken
-func BearerTokensFromRefresh(prettyRefreshToken string) (*models.BearerToken, error) {
-
-	token, err := getRefreshTokenFromDB(prettyRefreshToken)
-
+func BearerTokensFromRefresh(refreshToken string) (*models.BearerToken, error) {
+	token, err := getRefreshTokenFromDB(refreshToken)
 	if err == pg.ErrNoRows {
+		return nil, errors.New("No such refresh token")
+	}
+
+	if err != nil {
 		return nil, err
 	}
+
+	accessToken, err := oauth.GenerateAccessToken(token.UserID, token.Roles, refreshToken)
 	if err != nil {
-		panic("")
+		return nil, err
 	}
 
 	return &models.BearerToken{
-		AccessToken:  oauth.GenerateAccessToken(token.UserID, token.Roles, prettyRefreshToken),
+		AccessToken:  accessToken,
 		Type:         "bearer",
-		RefreshToken: prettyRefreshToken,
+		RefreshToken: refreshToken,
 	}, nil
 }
 
@@ -105,11 +112,15 @@ func BearerTokensFromRefresh(prettyRefreshToken string) (*models.BearerToken, er
 func RevokeRefreshTokenFromAccess(token *jwt.Token) error {
 	db := pg.DB()
 
-	refreshTokenPlain := oauth.RefreshToken(token)
-	users := models.Users{}
-	err := db.Model(&users).Where("user_id = ?", oauth.UserID(token)).Select()
+	refreshTokenPlain, err := oauth.RefreshToken(token)
 	if err != nil {
-		panic(err)
+		return err
+	}
+
+	users := models.Users{}
+	err = db.Model(&users).Where("user_id = ?", oauth.UserID(token)).Select()
+	if err != nil {
+		return err
 	}
 
 	if len(users) == 0 {
@@ -118,12 +129,8 @@ func RevokeRefreshTokenFromAccess(token *jwt.Token) error {
 	user := users[0]
 
 	// We need to regenerate the salt
-	ciphertext := core.PBKDF2(refreshTokenPlain, core.Sha256(user.ID))
+	ciphertext := core.PBKDF2(string(refreshTokenPlain), core.Sha256(user.ID))
 	var refreshToken models.Token
 	_, err = db.Model(&refreshToken).Where("token = ? AND type = 'refresh'", ciphertext).Delete()
-
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }

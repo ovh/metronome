@@ -16,8 +16,8 @@ import (
 
 // Task holds task attributes.
 type Task struct {
-	GUID      string    `json:"guid",sql:"guid,pk"`
-	ID        string    `json:"id",sql:"-"`
+	GUID      string    `json:"guid" sql:"guid,pk"`
+	ID        string    `json:"id" sql:"-"`
 	UserID    string    `json:"user_id"`
 	Name      string    `json:"name"`
 	Schedule  string    `json:"schedule"`
@@ -71,11 +71,11 @@ func (t *Task) FromKafka(msg *sarama.ConsumerMessage) error {
 }
 
 // ToJSON serialize a Task as JSON.
-func (t *Task) ToJSON() string {
+func (t *Task) ToJSON() ([]byte, error) {
 	out, err := json.Marshal(t)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
-	return string(out)
+	return out, nil
 }
