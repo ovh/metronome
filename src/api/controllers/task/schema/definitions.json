@@ -19,5 +19,8 @@
     "type": "string",
     "minLength": 1,
     "pattern": "^(\\S+):\/\/(\\S+)$"
+  },
+  "payload": {
+    "type": "object"
   }
 }
