@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS tasks
     name text NOT NULL,
     urn text NOT NULL,
     schedule text NOT NULL,
+    payload jsonb,
     created_at timestamp without time zone NOT NULL,
     id text NOT NULL,
     CONSTRAINT tasks_pkey PRIMARY KEY (guid),

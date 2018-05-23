@@ -1,6 +1,8 @@
 package consumers
 
 import (
+	"bytes"
+	"encoding/json"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -175,22 +177,32 @@ func (jc *JobConsumer) handleMsg(msg *sarama.ConsumerMessage) error {
 	if j.At < start.Unix()-j.Epsilon {
 		s.State = models.Expired
 	} else {
-		v := url.Values{}
-		v.Set("time", strconv.FormatInt(j.At, 10))
-		v.Set("epsilon", strconv.FormatInt(j.Epsilon, 10))
-		v.Set("urn", j.URN)
-		v.Set("at", strconv.FormatInt(time.Now().Unix(), 10))
-
-		res, err := http.PostForm(j.URN, v)
+		url, err := url.Parse(s.URN)
 		if err != nil {
-			log.WithError(err).Warn("Could not post form")
 			s.State = models.Failed
-		} else if res.StatusCode < 200 || res.StatusCode >= 300 {
-			s.State = models.Failed
-		}
-		if err == nil {
-			if err = res.Body.Close(); err != nil {
-				log.WithError(err).Warn("Could not close the response body")
+		} else {
+			q := url.Query()
+			q.Set("time", strconv.FormatInt(j.At, 10))
+			q.Set("epsilon", strconv.FormatInt(j.Epsilon, 10))
+			q.Set("at", strconv.FormatInt(time.Now().Unix(), 10))
+			url.RawQuery = q.Encode()
+
+			body, err := json.Marshal(j.Payload)
+			if err != nil {
+				log.WithError(err).Warn("Cannot marshall payload")
+				s.State = models.Failed
+			} else {
+				res, err := http.Post(url.String(), "application/json", bytes.NewReader(body))
+				if err != nil {
+					log.WithError(err).Warn("Could not post form")
+					s.State = models.Failed
+				} else if res.StatusCode < 200 || res.StatusCode >= 300 {
+					s.State = models.Failed
+				} else {
+					if err = res.Body.Close(); err != nil {
+						log.WithError(err).Warn("Could not close the response body")
+					}
+				}
 			}
 		}
 	}

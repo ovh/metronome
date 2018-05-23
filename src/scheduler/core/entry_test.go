@@ -71,6 +71,17 @@ var _ = Describe("Entry", func() {
 			_, err := entry("Ra/2016-12-15T11:39:00Z/P1M/ET1S")
 			Ω(err).Should(HaveOccurred())
 		})
+
+		It("Set payload", func() {
+			e, _ := entry("R/2016-12-15T11:39:00Z/PT1S/ET1S")
+			p:= map[string]interface{}{ "x": "y"}
+
+			e.SetPayload(p)
+			ePayload := e.GetPayload()
+
+			Ω(ePayload).ShouldNot(BeNil())
+			Ω(ePayload["x"]).Should(Equal("y"))
+		})
 	})
 
 	DescribeTable("Init",

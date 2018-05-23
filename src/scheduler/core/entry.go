@@ -99,6 +99,16 @@ func (e *Entry) GUID() string {
 	return e.task.GUID
 }
 
+// GetPayload return the Task payload
+func (e *Entry) GetPayload() map[string]interface{} {
+	return e.task.Payload
+}
+
+// SetPayload upodate Task payload
+func (e *Entry) SetPayload(payload map[string]interface{}) {
+	e.task.Payload = payload
+}
+
 // Next return the next execution time.
 // Return -1 if invalid.
 func (e *Entry) Next() int64 {

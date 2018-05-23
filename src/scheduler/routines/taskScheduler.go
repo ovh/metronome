@@ -256,6 +256,10 @@ func (ts *TaskScheduler) handleTask(t models.Task) error {
 	taskUpdate := false
 	if ts.entries[t.GUID] != nil {
 		taskUpdate = true
+
+		// Update Task payload
+		ts.entries[t.GUID].SetPayload(t.Payload)
+
 		if ts.entries[t.GUID].SameAs(t) {
 			log.Infof("NOP task: %s", t.GUID)
 			return nil
@@ -410,7 +414,7 @@ func planEntryInBatch(entry *core.Entry, at time.Time) ([]models.Job, error) {
 	}
 
 	for entry.Next() > 0 && entry.Next() <= at.Unix() {
-		jobs = append(jobs, models.Job{GUID: entry.GUID(), UserID: entry.UserID(), At: entry.Next(), Epsilon: entry.Epsilon(), URN: entry.URN()})
+		jobs = append(jobs, models.Job{GUID: entry.GUID(), UserID: entry.UserID(), At: entry.Next(), Epsilon: entry.Epsilon(), URN: entry.URN(), Payload: entry.GetPayload()})
 		plan, err := entry.Plan(at)
 		if err != nil {
 			return nil, err

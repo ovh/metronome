@@ -127,7 +127,13 @@ func (tc *TaskConsumer) handleMsg(msg *sarama.ConsumerMessage) error {
 	} else {
 		log.Infof("UPSERT task: %s", t.GUID)
 
-		_, err := db.Model(&t).OnConflict("(guid) DO UPDATE").Set("name = ?name").Set("urn = ?urn").Set("schedule = ?schedule").Insert()
+		_, err := db.Model(&t).OnConflict("(guid) DO UPDATE").
+			Set("name = ?name").
+			Set("urn = ?urn").
+			Set("schedule = ?schedule").
+			Set("payload = ?payload").
+			Set("id = ?id").
+			Insert()
 		if err != nil {
 			return err
 		}

@@ -11,6 +11,9 @@
     },
     "urn": {
       "$ref": "#/definitions/urn"
+    },
+    "payload": {
+      "$ref": "#/definitions/payload"
     }
   },
   "required": ["name", "schedule", "urn"],
