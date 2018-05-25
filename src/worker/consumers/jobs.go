@@ -3,6 +3,9 @@ package consumers
 import (
 	"bytes"
 	"encoding/json"
+	"io"
+	"io/ioutil"
+	"net"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -30,6 +33,7 @@ type JobConsumer struct {
 	jobSuccessCounter *prometheus.CounterVec
 	jobFailureCounter *prometheus.CounterVec
 	jobExpireCounter  *prometheus.CounterVec
+	httpClient        *http.Client
 }
 
 // NewJobConsumer returns a new job consumer.
@@ -60,6 +64,19 @@ func NewJobConsumer() (*JobConsumer, error) {
 	jc := &JobConsumer{
 		consumer: consumer,
 		producer: producer,
+	}
+
+	jc.httpClient = &http.Client{
+		Transport: &http.Transport{
+			Proxy: http.ProxyFromEnvironment,
+			Dial: (&net.Dialer{
+				Timeout:   300 * time.Millisecond,
+				KeepAlive: 1 * time.Minute,
+			}).Dial,
+			TLSHandshakeTimeout: 10 * time.Second,
+			DisableKeepAlives:   false,
+			MaxIdleConnsPerHost: 1024,
+		},
 	}
 
 	// worker
@@ -192,16 +209,20 @@ func (jc *JobConsumer) handleMsg(msg *sarama.ConsumerMessage) error {
 				log.WithError(err).Warn("Cannot marshall payload")
 				s.State = models.Failed
 			} else {
-				res, err := http.Post(url.String(), "application/json", bytes.NewReader(body))
+				res, err := jc.httpClient.Post(url.String(), "application/json", bytes.NewReader(body))
 				if err != nil {
 					log.WithError(err).Warn("Could not post form")
-					s.State = models.Failed
-				} else if res.StatusCode < 200 || res.StatusCode >= 300 {
-					s.State = models.Failed
 				} else {
+					if _, err = io.Copy(ioutil.Discard, res.Body); err != nil {
+						log.WithError(err).Warn("Failed to discard response body")
+					}
 					if err = res.Body.Close(); err != nil {
 						log.WithError(err).Warn("Could not close the response body")
 					}
+				}
+
+				if err != nil || res.StatusCode < 200 || res.StatusCode >= 300 {
+					s.State = models.Failed
 				}
 			}
 		}
