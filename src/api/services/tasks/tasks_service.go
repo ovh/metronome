@@ -36,6 +36,9 @@ func All(userID string) (*amodels.TasksAns, error) {
 		state, ok := states.Val()[t.GUID]
 		if !ok {
 			log.Warnf("No such entry in map states for key '%s'", t.GUID)
+			ans = append(ans, amodels.TaskAns{
+				Task:    t,
+			})
 			continue
 		}
 

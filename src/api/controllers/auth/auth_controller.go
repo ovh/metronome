@@ -62,7 +62,7 @@ func AuthHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if user == nil {
-			out.JSON(w, http.StatusUnauthorized, factories.Error(err))
+			out.JSON(w, http.StatusUnauthorized, factories.Error(errors.New("Unknown user")))
 			return
 		}
 
