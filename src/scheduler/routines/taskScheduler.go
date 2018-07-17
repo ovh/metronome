@@ -237,7 +237,11 @@ func (ts *TaskScheduler) Jobs() <-chan []models.Job {
 
 // Handle incomming task
 func (ts *TaskScheduler) handleTask(t models.Task) error {
-	if ts.entries[t.GUID] != nil && t.Schedule == "" {
+	if t.Schedule == "" {
+		if ts.entries[t.GUID] == nil {
+			return nil
+		}
+
 		log.Infof("DELETE task: %s", t.GUID)
 		ts.taskGauge.Dec()
 		delete(ts.entries, t.GUID)
@@ -285,7 +289,7 @@ func (ts *TaskScheduler) handleTask(t models.Task) error {
 	// Update entries
 	e, err := core.NewEntry(t)
 	if err != nil {
-		log.WithError(err).Errorf("unprocessable task(%v)", t)
+		log.WithError(err).Errorf("unprocessable task(%+v)", t)
 		return err
 	}
 	ts.entries[t.GUID] = e

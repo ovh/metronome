@@ -56,6 +56,7 @@ func (t *Task) FromKafka(msg *sarama.ConsumerMessage) error {
 	key := string(msg.Key)
 	segs := strings.Split(string(msg.Value), " ")
 	if len(segs) != 7 {
+		log.Infof("segments: %+v %+v", segs, len(segs))
 		return fmt.Errorf("unprocessable task(%v) - bad segments", key)
 	}
 

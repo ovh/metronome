@@ -74,7 +74,7 @@ var _ = Describe("Entry", func() {
 
 		It("Set payload", func() {
 			e, _ := entry("R/2016-12-15T11:39:00Z/PT1S/ET1S")
-			p:= map[string]interface{}{ "x": "y"}
+			p := map[string]interface{}{"x": "y"}
 
 			e.SetPayload(p)
 			ePayload := e.GetPayload()
