@@ -3,6 +3,7 @@ package routines
 import (
 	"container/ring"
 	"encoding/json"
+	"fmt"
 	"strconv"
 	"sync"
 	"time"
@@ -293,6 +294,9 @@ func (ts *TaskScheduler) handleTask(t models.Task) error {
 		return err
 	}
 	ts.entries[t.GUID] = e
+	log.
+		WithField(t.Name, fmt.Sprintf("%+v", e)).
+		Info("New entry")
 
 	// Plan executions
 	c := ts.nextExec
@@ -311,7 +315,9 @@ func (ts *TaskScheduler) handleTask(t models.Task) error {
 
 		c = c.Next()
 	}
-
+	log.
+		WithField(t.Name, e.Next()).
+		Info("Next execution")
 	return nil
 }
 
